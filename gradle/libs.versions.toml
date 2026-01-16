@@ -12,6 +12,7 @@ activity = "1.12.1"
 activityCompose = "1.12.2"  
 constraintlayout = "2.2.1"
 splashscreen = "1.2.0"
+material3 = "1.4.0"
 
 
 [libraries]
@@ -31,6 +32,7 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version = "1.12.2" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 
 
 

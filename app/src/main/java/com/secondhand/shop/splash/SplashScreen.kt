@@ -1,4 +1,4 @@
-package com.secondhand.shop
+package com.secondhand.shop.splash
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,6 +12,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.secondhand.shop.R
 import kotlinx.coroutines.delay
 
 
@@ -37,10 +38,10 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
             // 1. App Logo (Replace 'ic_launcher_foreground' with your actual logo name)
             // If you don't have a logo yet, this uses a default Android icon
             Icon(
-                painter = painterResource(id = android.R.drawable.ic_menu_revert),
+                painter = painterResource(id = R.mipmap.second_hand_shop_logo),
                 contentDescription = "App Logo",
-                modifier = Modifier.size(100.dp),
-                tint = Color(0xFF4CAF50) // A nice green for second-hand/eco vibe
+                modifier = Modifier.size(200.dp),
+                tint = Color.Unspecified
             )
 
             Spacer(modifier = Modifier.height(20.dp))
