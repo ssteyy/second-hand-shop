@@ -7,6 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,10 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+
+    // Visibility states for password fields
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val ecoGreen = Color(0xFF4CAF50)
@@ -97,21 +104,27 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Password Field with Eye Toggle
         CustomOutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = "Password",
             isPassword = true,
+            isPasswordVisible = passwordVisible,
+            onVisibilityToggle = { passwordVisible = !passwordVisible },
             ecoGreen = ecoGreen
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Confirm Password Field with Eye Toggle
         CustomOutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             label = "Confirm Password",
             isPassword = true,
+            isPasswordVisible = confirmPasswordVisible,
+            onVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
             ecoGreen = ecoGreen
         )
 
@@ -194,6 +207,8 @@ fun CustomOutlinedTextField(
     label: String,
     keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false,
+    isPasswordVisible: Boolean = false,
+    onVisibilityToggle: (() -> Unit)? = null,
     ecoGreen: Color
 ) {
     OutlinedTextField(
@@ -203,10 +218,21 @@ fun CustomOutlinedTextField(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
-        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+        // Logic to switch between hidden dots and actual text
+        visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             keyboardType = if (isPassword) KeyboardType.Password else keyboardType
         ),
+        trailingIcon = {
+            if (isPassword && onVisibilityToggle != null) {
+                val icon = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                val description = if (isPasswordVisible) "Hide password" else "Show password"
+
+                IconButton(onClick = onVisibilityToggle) {
+                    Icon(imageVector = icon, contentDescription = description, tint = Color.Gray)
+                }
+            }
+        },
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = ecoGreen,
             focusedLabelColor = ecoGreen,

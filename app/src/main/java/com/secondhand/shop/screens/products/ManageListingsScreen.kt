@@ -1,8 +1,10 @@
 package com.secondhand.shop.screens.products
 
+import android.app.Activity
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,9 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,20 +33,45 @@ fun ManageListingsScreen(onBack: () -> Unit, onEditProduct: () -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Active", "Sold")
+    val view = LocalView.current
+
+    // This block colors the system status bar (red circle area)
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = ecoGreen.toArgb()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
+                // This tells the AppBar to "ignore" the top safe padding and draw into it
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
-                    Text("My Listings", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "My Listings",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.White
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                modifier = Modifier.shadow(2.dp)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF4CAF50),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { padding ->

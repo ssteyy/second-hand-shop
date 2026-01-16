@@ -3,6 +3,7 @@ package com.secondhand.shop
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
@@ -10,34 +11,36 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.secondhand.shop.screens.auth.LoginScreen
 import com.secondhand.shop.screens.auth.RegisterScreen
-import com.secondhand.shop.screens.main.BottomNavItem
 import com.secondhand.shop.screens.main.MainScreen
 import com.secondhand.shop.screens.products.AddProductScreen
-import com.secondhand.shop.screens.products.FavoritesScreen
 import com.secondhand.shop.screens.products.ProductDetailScreen
 import com.secondhand.shop.screens.splash.SplashScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Enables edge-to-edge for the status bar integration we built earlier
+        enableEdgeToEdge()
+
         setContent {
             MaterialTheme {
-                // A surface container using the 'background' color from the theme
+                // Main container for the app
                 Surface(color = MaterialTheme.colorScheme.background) {
 
-                    // 1. Initialize the NavController for top-level navigation
-                    val navController = rememberNavController()
+                    // 1. Initialize the root NavController
+                    val rootNavController = rememberNavController()
 
-                    // 2. Define the NavHost with routes
+                    // 2. Define the NavHost
+                    // This handles high-level transitions like Auth -> Home
                     NavHost(
-                        navController = navController,
-                        startDestination = "splash" // App entry point
+                        navController = rootNavController,
+                        startDestination = "splash"
                     ) {
                         // --- Route: Splash Screen ---
                         composable("splash") {
                             SplashScreen(onNavigateToLogin = {
-                                // Navigate to login and remove splash so user can't go back to it
-                                navController.navigate("login") {
+                                rootNavController.navigate("login") {
                                     popUpTo("splash") { inclusive = true }
                                 }
                             })
@@ -47,16 +50,15 @@ class MainActivity : ComponentActivity() {
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = {
-                                    // Navigate to the Main Screen (which contains the Bottom Bar)
-                                    navController.navigate("main") {
+                                    rootNavController.navigate("main") {
                                         popUpTo("login") { inclusive = true }
                                     }
                                 },
                                 onNavigateToRegister = {
-                                    navController.navigate("register")
+                                    rootNavController.navigate("register")
                                 },
                                 onNavigateToForgotPwd = {
-                                    // Future: navController.navigate("forgot_password")
+                                    // Future implementation
                                 })
                         }
 
@@ -64,43 +66,42 @@ class MainActivity : ComponentActivity() {
                         composable("register") {
                             RegisterScreen(
                                 onNavigateBack = {
-                                    navController.popBackStack()
+                                    rootNavController.popBackStack()
                                 },
                                 onRegisterSuccess = {
-                                    // Navigate to Main after successful registration
-                                    navController.navigate("main") {
+                                    rootNavController.navigate("main") {
                                         popUpTo("login") { inclusive = true }
                                     }
                                 }
                             )
                         }
 
-                        // --- Route: Main App (Home, Sell, Chat, Profile) ---
-                        // This route loads the MainScreen which has its own internal NavHost for the BottomBar
+                        // --- Route: Main App ---
+                        // MainScreen contains the Bottom Bar and its own internal NavHost
                         composable("main") {
-                            MainScreen(rootNavController = navController)
+                            MainScreen(rootNavController = rootNavController)
                         }
 
-                        // Inside your NavHost block
-                        composable("favorites") {
-                            FavoritesScreen(
-                                onProductClick = { productId ->
-                                    navController.navigate("product_detail/$productId")
+                        // --- Route: Product Detail (Global) ---
+                        // We place this here so it can overlap the bottom navigation bar
+                        composable("product_detail") {
+                            ProductDetailScreen(
+                                onBack = { rootNavController.popBackStack() },
+                                onChatClicked = {
+                                    // Navigate to the chat tab inside MainScreen
+                                    // or a global chat detail if preferred
+                                    rootNavController.navigate("main") {
+                                        // This can be adjusted to open chat directly
+                                    }
                                 }
                             )
                         }
 
-                        composable("product_detail") {
-                            ProductDetailScreen(
-                                onBack = { navController.popBackStack() },
-                                onChatClicked = { navController.navigate("chat_detail") }
-                            )
-                        }
-
+                        // --- Route: Add Product (Global) ---
                         composable("add_product") {
                             AddProductScreen(
-                                onBack = { navController.popBackStack() },
-                                onPostSuccess = { navController.popBackStack() }
+                                onBack = { rootNavController.popBackStack() },
+                                onPostSuccess = { rootNavController.popBackStack() }
                             )
                         }
                     }

@@ -4,6 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
@@ -26,6 +30,10 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    // 1. State to track password visibility
+    var passwordVisible by remember { mutableStateOf(false) }
+
     val ecoGreen = Color(0xFF4CAF50)
     val auth = FirebaseAuth.getInstance()
 
@@ -78,7 +86,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- Password Field ---
+        // --- Password Field with Eye Icon ---
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -86,8 +94,19 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            // 2. Toggle between dots and text
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (passwordVisible)
+                    Icons.Default.Visibility
+                else Icons.Default.VisibilityOff
+
+                // 3. Icon button to toggle the state
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(imageVector = image, contentDescription = "Toggle password visibility", tint = Color.Gray)
+                }
+            },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = ecoGreen,
                 focusedLabelColor = ecoGreen,
@@ -114,7 +133,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Login Button with Firebase Auth ---
+        // --- Login Button ---
         Button(
             onClick = {
                 if (email.isNotBlank() && password.isNotBlank()) {
@@ -123,7 +142,7 @@ fun LoginScreen(
                             if (task.isSuccessful) {
                                 onLoginSuccess()
                             } else {
-                                // TODO: Show error message (e.g., Toast)
+                                // Error handling logic here
                             }
                         }
                 }

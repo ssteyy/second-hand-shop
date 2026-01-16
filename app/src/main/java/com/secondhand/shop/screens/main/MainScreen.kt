@@ -1,10 +1,8 @@
 package com.secondhand.shop.screens.main
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,12 +23,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.R
+import com.secondhand.shop.screens.chat.ChatDetailScreen
+import com.secondhand.shop.screens.chat.ChatListScreen
+import com.secondhand.shop.screens.notifications.NotificationsScreen
 import com.secondhand.shop.screens.products.FavoritesScreen
 import com.secondhand.shop.screens.products.ManageListingsScreen
+import com.secondhand.shop.screens.products.ProductDetailScreen
+import com.secondhand.shop.screens.profile.EditProfileScreen
+import com.secondhand.shop.screens.profile.SettingsScreen
+import com.secondhand.shop.screens.profile.UserScreen
 
 /**
- * 1. Data Structure for Bottom Navigation (Profile Added Here)
+ * 1. Data Structure for Bottom Navigation
  */
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem("home_content", Icons.Default.Home, "Home")
@@ -47,7 +53,6 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
 @Composable
 fun MainScreen(rootNavController: NavHostController) {
     val internalNavController = rememberNavController()
-
     val ecoGreen = Color(0xFF4CAF50)
     val darkEcoGreen = Color(0xFF388E3C)
     val white = Color.White
@@ -55,10 +60,17 @@ fun MainScreen(rootNavController: NavHostController) {
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Define routes where UI components should be hidden
+    val isChatDetail = currentRoute?.startsWith("chat_detail") == true
+    val isProductDetail = currentRoute == "product_detail"
+
+    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+    val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+
     Scaffold(
         topBar = {
-            // Only show TopBar on main tabs, hide on sub-screens like search or manage listings
-            if (currentRoute != "search_filter" && currentRoute != "manage_listings") {
+            // Show TopBar only on main tabs, hide on sub-screens or detail screens
+            if (currentRoute !in hideTopBarRoutes && !isChatDetail && !isProductDetail) {
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -68,12 +80,12 @@ fun MainScreen(rootNavController: NavHostController) {
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Second-Hand Shop",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = white
-                            )
+                            Text("Second-Hand Shop", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = white)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { internalNavController.navigate("notifications") }) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = white)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
@@ -81,17 +93,16 @@ fun MainScreen(rootNavController: NavHostController) {
             }
         },
         bottomBar = {
-            // Hide bottom bar when in the search filter screen
-            if (currentRoute != "search_filter") {
+            // Hide Navigation Bar on Detail screens and Search
+            if (currentRoute !in hideBottomBarRoutes && !isChatDetail && !isProductDetail) {
                 NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
                     val currentDestination = navBackStackEntry?.destination
-
                     val items = listOf(
                         BottomNavItem.Home,
                         BottomNavItem.Favorites,
                         BottomNavItem.Sell,
                         BottomNavItem.Chat,
-                        BottomNavItem.Profile // Profile is now a tab
+                        BottomNavItem.Profile
                     )
 
                     items.forEach { item ->
@@ -99,13 +110,7 @@ fun MainScreen(rootNavController: NavHostController) {
 
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = {
-                                Text(
-                                    text = item.label,
-                                    fontSize = 10.sp,
-                                    color = if (isSelected) white else white.copy(alpha = 0.7f)
-                                )
-                            },
+                            label = { Text(item.label, fontSize = 10.sp, color = if (isSelected) white else white.copy(alpha = 0.7f)) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = white,
@@ -117,9 +122,7 @@ fun MainScreen(rootNavController: NavHostController) {
                                     rootNavController.navigate("add_product")
                                 } else {
                                     internalNavController.navigate(item.route) {
-                                        popUpTo(internalNavController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
+                                        popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -131,40 +134,61 @@ fun MainScreen(rootNavController: NavHostController) {
             }
         }
     ) { innerPadding ->
-
         NavHost(
             navController = internalNavController,
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            // --- HOME TAB ---
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
                     onNavigateToSearch = { internalNavController.navigate("search_filter") },
-                    onProductClick = { rootNavController.navigate("product_detail") }
+                    onProductClick = { internalNavController.navigate("product_detail") }
                 )
             }
 
+            // --- SAVED TAB ---
             composable(BottomNavItem.Favorites.route) {
-                FavoritesScreen(
-                    onProductClick = { rootNavController.navigate("product_detail") }
-                )
+                FavoritesScreen() { internalNavController.popBackStack() }
             }
 
-            composable(BottomNavItem.Sell.route) {
-                LaunchedEffect(Unit) {
-                    rootNavController.navigate("add_product")
-                }
-            }
-
-            composable(BottomNavItem.Chat.route) { PlaceholderScreen("Messages") }
-
-            composable(BottomNavItem.Profile.route) {
-                ProfileScreen(onNavigateToListings = {
-                    internalNavController.navigate("manage_listings")
+            // --- CHAT TAB ---
+            composable(BottomNavItem.Chat.route) {
+                ChatListScreen(onChatClick = { userName ->
+                    internalNavController.navigate("chat_detail/$userName")
                 })
             }
 
-            // Sub-screens
+            // --- PROFILE TAB ---
+            composable(BottomNavItem.Profile.route) {
+                UserScreen(
+                    onNavigateToEdit = { internalNavController.navigate("edit_profile") },
+                    onNavigateToListings = { internalNavController.navigate("manage_listings") },
+                    onNavigateToSettings = { internalNavController.navigate("settings") },
+                    onNavigateToFavorites = { internalNavController.navigate(BottomNavItem.Favorites.route) }
+                )
+            }
+
+            // --- DETAIL & SUB-SCREENS ---
+
+            composable("product_detail") {
+                ProductDetailScreen(
+                    onBack = { internalNavController.popBackStack() },
+                    onChatClicked = {
+                        // You can pass a specific name here or a dynamic ID
+                        internalNavController.navigate("chat_detail/Sok Nimol")
+                    }
+                )
+            }
+
+            composable("chat_detail/{userName}") { backStackEntry ->
+                val userName = backStackEntry.arguments?.getString("userName") ?: "User"
+                ChatDetailScreen(
+                    userName = userName,
+                    onBack = { internalNavController.popBackStack() }
+                )
+            }
+
             composable("manage_listings") {
                 ManageListingsScreen(
                     onBack = { internalNavController.popBackStack() },
@@ -175,64 +199,26 @@ fun MainScreen(rootNavController: NavHostController) {
             composable("search_filter") {
                 SearchFilterScreen(onBack = { internalNavController.popBackStack() })
             }
-        }
-    }
-}
 
-@Composable
-fun ProfileScreen(onNavigateToListings: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Surface(
-            modifier = Modifier.size(100.dp),
-            shape = CircleShape,
-            color = Color(0xFFF0F0F0)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.padding(20.dp),
-                tint = Color.Gray
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text("My Account", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-        Text("user@example.com", fontSize = 14.sp, color = Color.Gray)
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Profile Menu Item
-        Card(
-            modifier = Modifier.fillMaxWidth().clickable { onNavigateToListings() },
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.List, null, tint = Color(0xFF4CAF50))
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Manage My Listings", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray)
+            composable("notifications") {
+                NotificationsScreen(onBack = { internalNavController.popBackStack() })
             }
-        }
-    }
-}
 
-@Composable
-fun PlaceholderScreen(name: String) {
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF7F7F7)) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(text = name, style = MaterialTheme.typography.headlineMedium, color = Color.Gray)
+            composable("edit_profile") {
+                EditProfileScreen(onBack = { internalNavController.popBackStack() })
+            }
+
+            composable("settings") {
+                SettingsScreen(
+                    onBack = { internalNavController.popBackStack() },
+                    onLogout = {
+                        FirebaseAuth.getInstance().signOut()
+                        rootNavController.navigate("login") {
+                            popUpTo(0)
+                        }
+                    }
+                )
+            }
         }
     }
 }

@@ -1,12 +1,12 @@
 package com.secondhand.shop.screens.products
 
-import android.R
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,69 +17,127 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.secondhand.shop.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(onBack: () -> Unit, onChatClicked: () -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
     var isFavorite by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = {
+                    Text(
+                        text = "Product Details",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
+            )
+        },
+        bottomBar = {
+            // Fixed Bottom Bar for Chat & Save
+            Surface(
+                shadowElevation = 16.dp,
+                tonalElevation = 2.dp,
+                color = Color.White
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .navigationBarsPadding(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { isFavorite = !isFavorite },
+                        modifier = Modifier.height(54.dp).weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.LightGray)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (isFavorite) Color.Red else Color.Black
+                        )
+                    }
+
+                    Button(
+                        onClick = onChatClicked,
+                        modifier = Modifier.height(54.dp).weight(2.5f),
+                        colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Chat with Seller", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
+                .background(Color.White)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 100.dp) // Space for the floating bottom bar
         ) {
-            // --- 1. Header Image & Back Button ---
-            Box(modifier = Modifier.fillMaxWidth().height(380.dp)) {
+            // --- 1. Hero Image Section ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(350.dp)
+            ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_menu_gallery), // Ensure this exists in res/drawable
+                    painter = painterResource(id = R.drawable.ic_launcher_background), // Ensure this exists in res/drawable
                     contentDescription = "Product Image",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
 
-                // Back Button with semi-transparent background
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .padding(16.dp)
-                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                // Condition Badge
+                Surface(
+                    modifier = Modifier.padding(16.dp).align(Alignment.BottomStart),
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
+                    Text(
+                        "Used - Like New",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            // --- 2. Product Content ---
+            // --- 2. Info Section ---
             Column(modifier = Modifier.padding(20.dp)) {
-                // Price and Heart Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$250.00",
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = ecoGreen
-                    )
-                    IconButton(onClick = { isFavorite = !isFavorite }) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorite) Color.Red else Color.Gray,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = "$250.00",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = ecoGreen
+                )
 
                 Text(
                     text = "Premium Leather Camera Bag",
@@ -96,10 +154,14 @@ fun ProductDetailScreen(onBack: () -> Unit, onChatClicked: () -> Unit) {
                     Text(text = "2 hours ago", color = Color.Gray, fontSize = 14.sp)
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), thickness = 1.dp, color = Color(0xFFF0F0F0))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 24.dp),
+                    thickness = 1.dp,
+                    color = Color(0xFFF0F0F0)
+                )
 
-                // --- 3. Seller Info Card ---
-                Text(text = "Seller", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                // --- 3. Seller Card ---
+                Text(text = "Seller Information", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier
@@ -109,20 +171,30 @@ fun ProductDetailScreen(onBack: () -> Unit, onChatClicked: () -> Unit) {
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.LightGray))
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray)
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "Sok Nimol", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text(text = "Verified Seller", color = ecoGreen, fontSize = 12.sp)
+                        Text(text = "Verified Seller • 4.9 ★", color = ecoGreen, fontSize = 12.sp)
                     }
-                    OutlinedButton(onClick = { /* View Profile */ }) {
-                        Text("View Profile", fontSize = 12.sp)
+                    OutlinedButton(
+                        onClick = { /* Profile Navigation */ },
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, ecoGreen),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Text("View Profile", fontSize = 12.sp, color = ecoGreen)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // --- 4. Description ---
+                // --- 4. Description Section ---
                 Text(text = "Description", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(
                     text = "High-quality vintage camera bag made from authentic leather. It features three internal compartments and adjustable straps. Very minor wear on the buckle, otherwise perfect condition.",
@@ -130,47 +202,8 @@ fun ProductDetailScreen(onBack: () -> Unit, onChatClicked: () -> Unit) {
                     lineHeight = 24.sp,
                     modifier = Modifier.padding(top = 8.dp)
                 )
-            }
-        }
 
-        // --- 5. Floating Action Bottom Bar ---
-        Surface(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            shadowElevation = 20.dp,
-            color = Color.White
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Secondary Action: Add to Favorite
-                OutlinedButton(
-                    onClick = { isFavorite = !isFavorite },
-                    modifier = Modifier.height(56.dp).weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color.LightGray)
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = if (isFavorite) Color.Red else Color.Black
-                    )
-                }
-
-                // Primary Action: Chat
-                Button(
-                    onClick = onChatClicked,
-                    modifier = Modifier.height(56.dp).weight(2.5f),
-                    colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Chat, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Chat with Seller", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }

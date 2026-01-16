@@ -1,9 +1,5 @@
 package com.secondhand.shop.screens.products
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -12,13 +8,12 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -27,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Simple Data Class to handle Product State
+// Data Class for Product items
 data class FavoriteProduct(
     val id: String,
     val name: String,
@@ -37,7 +32,9 @@ data class FavoriteProduct(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FavoritesScreen(onProductClick: (String) -> Unit) {
+fun FavoritesScreen(
+    onProductClick: (String) -> Unit
+) {
     val ecoGreen = Color(0xFF4CAF50)
 
     // 1. Manage the list of favorites in a state
@@ -61,6 +58,12 @@ fun FavoritesScreen(onProductClick: (String) -> Unit) {
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 0.5.sp
                     )
+                },
+                navigationIcon = {
+                    val onBack = null
+                    IconButton(onClick = { onBack }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.White
@@ -93,7 +96,16 @@ fun FavoritesScreen(onProductClick: (String) -> Unit) {
             if (favoriteItems.isEmpty()) {
                 // Empty State
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No favorites yet", color = Color.Gray)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = null,
+                            tint = Color.LightGray,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("No favorites yet", color = Color.Gray)
+                    }
                 }
             } else {
                 // Grid Content
@@ -104,12 +116,14 @@ fun FavoritesScreen(onProductClick: (String) -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Using items(favoriteItems) ensures the grid updates when the list changes
                     items(favoriteItems, key = { it.id }) { product ->
                         FavoriteProductCard(
                             product = product,
                             ecoGreen = ecoGreen,
-                            onCardClick = { onProductClick(product.id) },
+                            onCardClick = {
+                                // This triggers the navigation in MainScreen/MainActivity
+                                onProductClick(product.id)
+                            },
                             onRemoveClick = { favoriteItems.remove(product) }
                         )
                     }
@@ -129,11 +143,11 @@ fun FavoriteProductCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, Color(0xFFEEEEEE)),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCardClick() }
+            .clickable { onCardClick() } // Navigation trigger
     ) {
         Column {
             Box(modifier = Modifier.height(160.dp)) {
@@ -163,7 +177,7 @@ fun FavoriteProductCard(
                             Icon(
                                 imageVector = Icons.Default.Favorite,
                                 contentDescription = "Unfavorite",
-                                tint = Color(0xFFE91E63), // Pinkish Red
+                                tint = Color(0xFFE91E63),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -206,13 +220,13 @@ fun FavoriteProductCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(30.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(ecoGreen.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
+                // Clicking this button also navigates to detail
+                Button(
+                    onClick = onCardClick,
+                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ecoGreen.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
                         "View Details",
