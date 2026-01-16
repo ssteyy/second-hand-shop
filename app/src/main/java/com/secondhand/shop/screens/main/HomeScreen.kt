@@ -1,4 +1,5 @@
-package com.secondhand.shop.main
+package com.secondhand.shop.screens.main
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -16,7 +17,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun HomeScreen(onNavigateToSearch: () -> Unit) {
+fun HomeScreen(
+    onNavigateToSearch: () -> Unit,
+    onProductClick: () -> Unit // 1. Added parameter for product navigation
+) {
     val ecoGreen = Color(0xFF4CAF50)
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF7F7F7))) {
@@ -27,7 +31,7 @@ fun HomeScreen(onNavigateToSearch: () -> Unit) {
                 .padding(16.dp)
                 .height(50.dp)
                 .background(Color.White, RoundedCornerShape(25.dp))
-                .clickable { onNavigateToSearch() } // Triggers navigation
+                .clickable { onNavigateToSearch() }
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -55,7 +59,8 @@ fun HomeScreen(onNavigateToSearch: () -> Unit) {
             fontSize = 18.sp
         )
 
-        ProductGrid()
+        // 2. Pass the lambda to the ProductGrid
+        ProductGrid(onProductClick = onProductClick)
     }
 }
 
@@ -94,7 +99,7 @@ fun CategoryRow(ecoGreen: Color) {
 }
 
 @Composable
-fun ProductGrid() {
+fun ProductGrid(onProductClick: () -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(16.dp),
@@ -102,22 +107,24 @@ fun ProductGrid() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        // Placeholder items for demonstration
         items(10) { index ->
-            ProductItem()
+            // 3. Pass the lambda to each ProductItem
+            ProductItem(onClick = onProductClick)
         }
     }
 }
 
 @Composable
-fun ProductItem() {
+fun ProductItem(onClick: () -> Unit) {
     Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }, // 4. Wrap card in clickable modifier
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column {
-            // Placeholder Image
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

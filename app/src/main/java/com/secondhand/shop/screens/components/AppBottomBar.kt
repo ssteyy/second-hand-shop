@@ -1,4 +1,4 @@
-package com.secondhand.shop.components
+package com.secondhand.shop.screens.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle

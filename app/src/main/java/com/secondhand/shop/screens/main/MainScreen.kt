@@ -1,8 +1,9 @@
-package com.secondhand.shop.main
+package com.secondhand.shop.screens.main
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,11 +19,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.secondhand.shop.R
+import com.secondhand.shop.screens.products.FavoritesScreen
+import com.secondhand.shop.screens.products.ManageListingsScreen
 
 /**
  * 1. Data Structure for Bottom Navigation
@@ -40,32 +44,26 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(rootNavController: NavHostController) {
     val navController = rememberNavController()
 
-    // Theme Colors
     val ecoGreen = Color(0xFF4CAF50)
     val darkEcoGreen = Color(0xFF388E3C)
     val white = Color.White
 
-    // Check current route to hide/show Top/Bottom bars on specific screens
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        // --- TOP APP BAR (GREEN) ---
-        // Hide Top Bar if we are in Search & Filter for a cleaner full-screen look
         topBar = {
-            if (currentRoute != "search_filter") {
+            if (currentRoute != "search_filter" && currentRoute != "manage_listings") {
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
                                 painter = painterResource(id = R.mipmap.logo_with_bg),
                                 contentDescription = "App Logo",
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
+                                modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -84,19 +82,10 @@ fun MainScreen() {
                                 restoreState = true
                             }
                         }) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Profile",
-                                tint = white,
-                                modifier = Modifier.size(28.dp)
-                            )
+                            Icon(Icons.Default.AccountCircle, "Profile", tint = white, modifier = Modifier.size(28.dp))
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = ecoGreen,
-                        titleContentColor = white,
-                        actionIconContentColor = white
-                    )
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
                 )
             }
         },
@@ -104,35 +93,24 @@ fun MainScreen() {
         bottomBar = {
             // Hide Bottom Bar when searching to give more space for filters
             if (currentRoute != "search_filter") {
-                NavigationBar(
-                    containerColor = ecoGreen,
-                    tonalElevation = 8.dp
-                ) {
+                NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
                     val currentDestination = navBackStackEntry?.destination
 
+                    // Added Profile to the items list so the bar matches your object definitions
                     val items = listOf(
                         BottomNavItem.Home,
                         BottomNavItem.Favorites,
                         BottomNavItem.Sell,
-                        BottomNavItem.Chat
+                        BottomNavItem.Chat,
+                        BottomNavItem.Profile
                     )
 
                     items.forEach { item ->
                         val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
                         NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = item.label
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = item.label,
-                                    color = if (isSelected) white else white.copy(alpha = 0.7f)
-                                )
-                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label, color = if (isSelected) white else white.copy(alpha = 0.7f)) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = white,
@@ -140,12 +118,15 @@ fun MainScreen() {
                                 indicatorColor = darkEcoGreen
                             ),
                             onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                if (item == BottomNavItem.Sell) {
+                                    // Navigate using ROOT controller for full-screen Add Product
+                                    rootNavController.navigate("add_product")
+                                } else {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
                         )
@@ -160,44 +141,75 @@ fun MainScreen() {
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Main Content Screens
             composable(BottomNavItem.Home.route) {
-                HomeScreen(onNavigateToSearch = {
-                    navController.navigate("search_filter")
-                })
+                HomeScreen(
+                    onNavigateToSearch = { rootNavController.navigate("search_filter") },
+                    onProductClick = { rootNavController.navigate("product_detail") }
+                )
             }
 
-            // Search and Filter Screen
-            composable("search_filter") {
-                SearchFilterScreen(onBack = {
-                    navController.popBackStack()
-                })
+            composable(BottomNavItem.Favorites.route) {
+                FavoritesScreen()
             }
 
-            // Other Navigation Destinations
-            composable(BottomNavItem.Favorites.route) { PlaceholderScreen("My Favorites") }
-            composable(BottomNavItem.Sell.route) { PlaceholderScreen("Sell an Item") }
+            // Keep this route as a placeholder/redirect logic
+            composable(BottomNavItem.Sell.route) {
+                LaunchedEffect(Unit) {
+                    rootNavController.navigate("add_product")
+                }
+            }
+
             composable(BottomNavItem.Chat.route) { PlaceholderScreen("Messages") }
-            composable(BottomNavItem.Profile.route) { PlaceholderScreen("User Profile") }
+
+            composable(BottomNavItem.Profile.route) {
+                ProfileScreen(onNavigateToListings = {
+                    navController.navigate("manage_listings")
+                })
+            }
+
+            composable("manage_listings") {
+                ManageListingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onEditProduct = { rootNavController.navigate("add_product") }
+                )
+            }
+
+            composable("search_filter") {
+                SearchFilterScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }
 
-/**
- * 3. Simple Placeholder Screen
- */
+@Composable
+fun ProfileScreen(onNavigateToListings: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(80.dp), tint = Color.Gray)
+        Text("My Account", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onNavigateToListings,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.List, null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Manage My Listings")
+        }
+    }
+}
+
 @Composable
 fun PlaceholderScreen(name: String) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF7F7F7)
-    ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF7F7F7)) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.Gray
-            )
+            Text(text = name, style = MaterialTheme.typography.headlineMedium, color = Color.Gray)
         }
     }
 }

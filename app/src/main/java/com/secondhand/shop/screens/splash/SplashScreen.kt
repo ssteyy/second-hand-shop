@@ -1,4 +1,4 @@
-package com.secondhand.shop.splash
+package com.secondhand.shop.screens.splash
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

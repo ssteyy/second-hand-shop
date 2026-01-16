@@ -1,4 +1,4 @@
-package com.secondhand.shop.main
+package com.secondhand.shop.screens.main
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*

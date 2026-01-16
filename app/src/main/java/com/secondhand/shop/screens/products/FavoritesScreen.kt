@@ -1,5 +1,6 @@
-package com.secondhand.shop.screens
+package com.secondhand.shop.screens.products
 
+import android.R
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -11,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -19,7 +19,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.secondhand.shop.R
 import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +71,7 @@ fun FavoriteProductCard(ecoGreen: Color) {
         Column {
             Box {
                 Image(
-                    painter = painterResource(id = android.R.drawable.ic_menu_gallery),
+                    painter = painterResource(id = R.drawable.ic_menu_gallery),
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth().height(150.dp),
                     contentScale = ContentScale.Crop

@@ -8,13 +8,13 @@ import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.secondhand.shop.auth.LoginScreen
-import com.secondhand.shop.auth.RegisterScreen
-import com.secondhand.shop.main.BottomNavItem
-import com.secondhand.shop.main.MainScreen
-import com.secondhand.shop.screens.FavoritesScreen
-import com.secondhand.shop.screens.ProductDetailScreen
-import com.secondhand.shop.splash.SplashScreen
+import com.secondhand.shop.screens.auth.LoginScreen
+import com.secondhand.shop.screens.auth.RegisterScreen
+import com.secondhand.shop.screens.main.BottomNavItem
+import com.secondhand.shop.screens.main.MainScreen
+import com.secondhand.shop.screens.products.FavoritesScreen
+import com.secondhand.shop.screens.products.ProductDetailScreen
+import com.secondhand.shop.screens.splash.SplashScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                         // --- Route: Main App (Home, Sell, Chat, Profile) ---
                         // This route loads the MainScreen which has its own internal NavHost for the BottomBar
                         composable("main") {
-                            MainScreen()
+                            MainScreen(rootNavController = navController)
                         }
 
                         // Inside your NavHost block

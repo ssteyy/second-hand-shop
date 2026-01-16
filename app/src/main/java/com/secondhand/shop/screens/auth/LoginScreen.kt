@@ -1,4 +1,4 @@
-package com.secondhand.shop.auth
+package com.secondhand.shop.screens.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*

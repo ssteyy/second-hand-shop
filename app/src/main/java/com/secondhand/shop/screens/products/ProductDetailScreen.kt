@@ -1,5 +1,6 @@
-package com.secondhand.shop.screens
+package com.secondhand.shop.screens.products
 
+import android.R
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -34,7 +35,7 @@ fun ProductDetailScreen(onBack: () -> Unit, onChatClicked: () -> Unit) {
             // --- 1. Header Image & Back Button ---
             Box(modifier = Modifier.fillMaxWidth().height(380.dp)) {
                 Image(
-                    painter = painterResource(id = android.R.drawable.ic_menu_gallery), // Ensure this exists in res/drawable
+                    painter = painterResource(id = R.drawable.ic_menu_gallery), // Ensure this exists in res/drawable
                     contentDescription = "Product Image",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
