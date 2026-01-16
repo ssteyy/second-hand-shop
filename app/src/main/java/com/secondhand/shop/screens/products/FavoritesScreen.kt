@@ -1,37 +1,71 @@
 package com.secondhand.shop.screens.products
 
-import android.R
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.CircleShape
+
+// Simple Data Class to handle Product State
+data class FavoriteProduct(
+    val id: String,
+    val name: String,
+    val price: String,
+    val condition: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FavoritesScreen() {
+fun FavoritesScreen(onProductClick: (String) -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
+
+    // 1. Manage the list of favorites in a state
+    val favoriteItems = remember {
+        mutableStateListOf(
+            FavoriteProduct("1", "Vintage Denim Jacket", "$45.00", "Used"),
+            FavoriteProduct("2", "Modern Coffee Table", "$120.00", "New"),
+            FavoriteProduct("3", "Wireless Headphones", "$85.00", "Like New"),
+            FavoriteProduct("4", "Designer Backpack", "$210.00", "Used"),
+            FavoriteProduct("5", "Potted Plant", "$30.00", "Fresh"),
+            FavoriteProduct("6", "Retro Camera", "$99.00", "Used")
+        )
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("My Favorites", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-                modifier = Modifier.shadow(2.dp)
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "My Favorites",
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.5.sp
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
+                ),
+                modifier = Modifier.statusBarsPadding()
             )
         }
     ) { padding ->
@@ -39,22 +73,46 @@ fun FavoritesScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF8F8F8))
-                .padding(horizontal = 16.dp)
+                .background(Color.White)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "6 Items saved", color = Color.Gray, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
+            // Header Info Area
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Repeat 6 times for demonstration
-                items(6) {
-                    FavoriteProductCard(ecoGreen)
+                Text(
+                    text = "${favoriteItems.size} Items saved",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+
+            if (favoriteItems.isEmpty()) {
+                // Empty State
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No favorites yet", color = Color.Gray)
+                }
+            } else {
+                // Grid Content
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Using items(favoriteItems) ensures the grid updates when the list changes
+                    items(favoriteItems, key = { it.id }) { product ->
+                        FavoriteProductCard(
+                            product = product,
+                            ecoGreen = ecoGreen,
+                            onCardClick = { onProductClick(product.id) },
+                            onRemoveClick = { favoriteItems.remove(product) }
+                        )
+                    }
                 }
             }
         }
@@ -62,52 +120,107 @@ fun FavoritesScreen() {
 }
 
 @Composable
-fun FavoriteProductCard(ecoGreen: Color) {
+fun FavoriteProductCard(
+    product: FavoriteProduct,
+    ecoGreen: Color,
+    onCardClick: () -> Unit,
+    onRemoveClick: () -> Unit
+) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, Color(0xFFEEEEEE)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCardClick() }
     ) {
         Column {
-            Box {
+            Box(modifier = Modifier.height(160.dp)) {
+                // Product Image Placeholder
                 Image(
-                    painter = painterResource(id = R.drawable.ic_menu_gallery),
+                    painter = painterResource(id = android.R.drawable.ic_menu_gallery),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(150.dp),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF9F9F9)),
+                    contentScale = ContentScale.Fit
                 )
-                // Remove Favorite Icon Button
-                Surface(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.9f)
+
+                // "Remove" Heart Overlay
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
                 ) {
-                    IconButton(
-                        onClick = { /* Remove Favorite Logic */ },
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = 4.dp,
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Favorite,
-                            contentDescription = "Remove",
-                            tint = Color.Red,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        IconButton(onClick = onRemoveClick) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Unfavorite",
+                                tint = Color(0xFFE91E63), // Pinkish Red
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
+
+                // Condition Badge
+                Surface(
+                    color = Color.Black.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(topStart = 0.dp, bottomEnd = 12.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
+                ) {
+                    Text(
+                        text = product.condition,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "$120.00",
-                    fontWeight = FontWeight.ExtraBold,
-                    color = ecoGreen,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = "Product Name Here",
+                    text = product.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    fontSize = 14.sp,
-                    color = Color.DarkGray
+                    overflow = TextOverflow.Ellipsis
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = product.price,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = ecoGreen
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ecoGreen.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "View Details",
+                        color = ecoGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

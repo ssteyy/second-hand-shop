@@ -12,6 +12,7 @@ import com.secondhand.shop.screens.auth.LoginScreen
 import com.secondhand.shop.screens.auth.RegisterScreen
 import com.secondhand.shop.screens.main.BottomNavItem
 import com.secondhand.shop.screens.main.MainScreen
+import com.secondhand.shop.screens.products.AddProductScreen
 import com.secondhand.shop.screens.products.FavoritesScreen
 import com.secondhand.shop.screens.products.ProductDetailScreen
 import com.secondhand.shop.screens.splash.SplashScreen
@@ -81,14 +82,25 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // Inside your NavHost block
-                        composable(BottomNavItem.Favorites.route) {
-                            FavoritesScreen()
+                        composable("favorites") {
+                            FavoritesScreen(
+                                onProductClick = { productId ->
+                                    navController.navigate("product_detail/$productId")
+                                }
+                            )
                         }
 
                         composable("product_detail") {
                             ProductDetailScreen(
                                 onBack = { navController.popBackStack() },
                                 onChatClicked = { navController.navigate("chat_detail") }
+                            )
+                        }
+
+                        composable("add_product") {
+                            AddProductScreen(
+                                onBack = { navController.popBackStack() },
+                                onPostSuccess = { navController.popBackStack() }
                             )
                         }
                     }

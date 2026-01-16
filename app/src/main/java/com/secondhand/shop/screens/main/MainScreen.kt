@@ -36,26 +36,27 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
     object Favorites : BottomNavItem("favorites", Icons.Default.Favorite, "Favorites")
     object Sell : BottomNavItem("sell", Icons.Default.AddCircle, "Sell")
     object Chat : BottomNavItem("chat", Icons.Default.Chat, "Chat")
-    object Profile : BottomNavItem("profile_content", Icons.Default.AccountCircle, "Profile")
 }
 
 /**
- * 2. Main Container with Green Navigation and Search-Filter Routing
+ * 2. Main Container
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(rootNavController: NavHostController) {
-    val navController = rememberNavController()
+    // internalNavController manages tabs (Home, Favorites, Chat, Profile)
+    val internalNavController = rememberNavController()
 
     val ecoGreen = Color(0xFF4CAF50)
     val darkEcoGreen = Color(0xFF388E3C)
     val white = Color.White
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
         topBar = {
+            // Hide TopBar for specific internal sub-screens if needed
             if (currentRoute != "search_filter" && currentRoute != "manage_listings") {
                 TopAppBar(
                     title = {
@@ -75,9 +76,10 @@ fun MainScreen(rootNavController: NavHostController) {
                         }
                     },
                     actions = {
+                        // Access Profile via Top Bar
                         IconButton(onClick = {
-                            navController.navigate(BottomNavItem.Profile.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            internalNavController.navigate("profile_content") {
+                                popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -89,20 +91,16 @@ fun MainScreen(rootNavController: NavHostController) {
                 )
             }
         },
-        // --- BOTTOM NAVIGATION BAR (GREEN) ---
         bottomBar = {
-            // Hide Bottom Bar when searching to give more space for filters
             if (currentRoute != "search_filter") {
                 NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
                     val currentDestination = navBackStackEntry?.destination
 
-                    // Added Profile to the items list so the bar matches your object definitions
                     val items = listOf(
                         BottomNavItem.Home,
                         BottomNavItem.Favorites,
                         BottomNavItem.Sell,
-                        BottomNavItem.Chat,
-                        BottomNavItem.Profile
+                        BottomNavItem.Chat
                     )
 
                     items.forEach { item ->
@@ -119,11 +117,10 @@ fun MainScreen(rootNavController: NavHostController) {
                             ),
                             onClick = {
                                 if (item == BottomNavItem.Sell) {
-                                    // Navigate using ROOT controller for full-screen Add Product
                                     rootNavController.navigate("add_product")
                                 } else {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    internalNavController.navigate(item.route) {
+                                        popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -135,47 +132,59 @@ fun MainScreen(rootNavController: NavHostController) {
             }
         }
     ) { innerPadding ->
-        // --- CONTENT AREA (Routing) ---
+
         NavHost(
-            navController = navController,
+            navController = internalNavController,
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            // --- HOME TAB ---
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
-                    onNavigateToSearch = { rootNavController.navigate("search_filter") },
+                    onNavigateToSearch = { internalNavController.navigate("search_filter") },
                     onProductClick = { rootNavController.navigate("product_detail") }
                 )
             }
 
+            // --- FAVORITES TAB ---
             composable(BottomNavItem.Favorites.route) {
-                FavoritesScreen()
+                // Pass the click logic to push to Product Detail using rootNavController
+                FavoritesScreen(
+                    onProductClick = { productId ->
+                        rootNavController.navigate("product_detail")
+                        // Note: If your detail route needs an ID, use "product_detail/$productId"
+                    }
+                )
             }
 
-            // Keep this route as a placeholder/redirect logic
+            // --- SELL TAB (Redirect) ---
             composable(BottomNavItem.Sell.route) {
                 LaunchedEffect(Unit) {
                     rootNavController.navigate("add_product")
                 }
             }
 
+            // --- CHAT TAB ---
             composable(BottomNavItem.Chat.route) { PlaceholderScreen("Messages") }
 
-            composable(BottomNavItem.Profile.route) {
+            // --- PROFILE TAB ---
+            composable("profile_content") {
                 ProfileScreen(onNavigateToListings = {
-                    navController.navigate("manage_listings")
+                    internalNavController.navigate("manage_listings")
                 })
             }
 
+            // --- MANAGE LISTINGS (Sub-screen) ---
             composable("manage_listings") {
                 ManageListingsScreen(
-                    onBack = { navController.popBackStack() },
+                    onBack = { internalNavController.popBackStack() },
                     onEditProduct = { rootNavController.navigate("add_product") }
                 )
             }
 
+            // --- SEARCH FILTER (Sub-screen) ---
             composable("search_filter") {
-                SearchFilterScreen(onBack = { navController.popBackStack() })
+                SearchFilterScreen(onBack = { internalNavController.popBackStack() })
             }
         }
     }

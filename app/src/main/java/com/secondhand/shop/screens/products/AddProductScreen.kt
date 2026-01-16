@@ -1,5 +1,11 @@
 package com.secondhand.shop.screens.products
 
+import android.Manifest
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,28 +16,87 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
+    val white = Color.White
+    val context = LocalContext.current
+
+    // --- Permission & Image State ---
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    var capturedImage by remember { mutableStateOf<Any?>(null) }
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    // --- Form States ---
     var title by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    // Dropdown States
+    var expanded by remember { mutableStateOf(false) }
+    val conditions = listOf("Brand New", "Like New", "Lightly Used", "Well Used", "For Parts")
+    var selectedCondition by remember { mutableStateOf(conditions[0]) }
+
+    // 1. Gallery Launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) capturedImage = uri
+        showSheet = false
+    }
+
+    // 2. Camera Launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) capturedImage = bitmap
+        showSheet = false
+    }
+
+    val customTextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = ecoGreen,
+        focusedLabelColor = ecoGreen,
+        cursorColor = ecoGreen,
+        focusedTrailingIconColor = ecoGreen
+    )
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Post New Item", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = {
+                    Text(
+                        text = "Post New Item",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = white
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                        // Changed to ArrowBack and color to White
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = white
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                // Updated TopAppBar colors to ecoGreen
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = ecoGreen
+                )
             )
         }
     ) { padding ->
@@ -43,32 +108,50 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // 1. Image Upload Section
-            Text("Photos (Max 5)", fontWeight = FontWeight.Bold)
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                // Add Photo Button
+            // --- 1. IMAGE UPLOAD SECTION ---
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Photos", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
+                Spacer(modifier = Modifier.height(12.dp))
+
                 Surface(
-                    modifier = Modifier.size(100.dp).clickable { /* Gallery logic */ },
-                    color = Color(0xFFF0F0F0),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier
+                        .size(180.dp)
+                        .clickable { showSheet = true },
+                    color = Color(0xFFF8F8F8),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(2.dp, if(capturedImage != null) ecoGreen else ecoGreen.copy(alpha = 0.3f))
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = ecoGreen)
-                        Text("Add", fontSize = 12.sp, color = ecoGreen)
+                    if (capturedImage != null) {
+                        AsyncImage(
+                            model = capturedImage,
+                            contentDescription = "Product Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.AddAPhoto, null, tint = ecoGreen, modifier = Modifier.size(40.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Add Photo", color = ecoGreen, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
 
-            // 2. Form Fields
+            // --- 2. FORM FIELDS ---
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("What are you selling?") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = customTextFieldColors
             )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -77,18 +160,43 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                     onValueChange = { price = it },
                     label = { Text("Price ($)") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                // Condition Dropdown Placeholder
-                OutlinedTextField(
-                    value = "Brand New",
-                    onValueChange = {},
-                    label = { Text("Condition") },
-                    readOnly = true,
-                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
+                    colors = customTextFieldColors
                 )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedCondition,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Condition") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = customTextFieldColors,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        conditions.forEach { condition ->
+                            DropdownMenuItem(
+                                text = { Text(condition) },
+                                onClick = {
+                                    selectedCondition = condition
+                                    expanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
             }
 
             OutlinedTextField(
@@ -96,7 +204,8 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 onValueChange = { description = it },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth().height(150.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = customTextFieldColors
             )
 
             Button(
@@ -106,6 +215,41 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Post Item Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        }
+
+        // --- BOTTOM SHEET FOR SELECTION ---
+        if (showSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState,
+                containerColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 40.dp, start = 20.dp, end = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Select Photo Source", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+
+                    ListItem(
+                        headlineContent = { Text("Take a Photo") },
+                        leadingContent = { Icon(Icons.Default.PhotoCamera, null, tint = ecoGreen) },
+                        modifier = Modifier.clickable {
+                            if (cameraPermissionState.status.isGranted) {
+                                cameraLauncher.launch()
+                            } else {
+                                cameraPermissionState.launchPermissionRequest()
+                            }
+                        }
+                    )
+                    ListItem(
+                        headlineContent = { Text("Choose from Gallery") },
+                        leadingContent = { Icon(Icons.Default.PhotoLibrary, null, tint = ecoGreen) },
+                        modifier = Modifier.clickable { galleryLauncher.launch("image/*") }
+                    )
+                }
             }
         }
     }
