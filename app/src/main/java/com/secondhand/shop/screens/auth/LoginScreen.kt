@@ -15,10 +15,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.R
-
-// Import your R file
-// import com.your.package.R
 
 @Composable
 fun LoginScreen(
@@ -28,6 +26,8 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val ecoGreen = Color(0xFF4CAF50)
+    val auth = FirebaseAuth.getInstance()
 
     Column(
         modifier = Modifier
@@ -59,8 +59,6 @@ fun LoginScreen(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
-
-        val ecoGreen = Color(0xFF4CAF50)
 
         // --- Email Field ---
         OutlinedTextField(
@@ -108,7 +106,7 @@ fun LoginScreen(
             ) {
                 Text(
                     text = "Forgot Password?",
-                    color = Color(0xFF4CAF50),
+                    color = ecoGreen,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -116,14 +114,25 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Action Buttons ---
+        // --- Login Button with Firebase Auth ---
         Button(
-            onClick = onLoginSuccess,
+            onClick = {
+                if (email.isNotBlank() && password.isNotBlank()) {
+                    auth.signInWithEmailAndPassword(email, password)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                onLoginSuccess()
+                            } else {
+                                // TODO: Show error message (e.g., Toast)
+                            }
+                        }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+            colors = ButtonDefaults.buttonColors(containerColor = ecoGreen)
         ) {
             Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
@@ -144,14 +153,14 @@ fun LoginScreen(
                 color = Color.Gray
             )
             TextButton(
-                onClick = onNavigateToRegister, // This must match the parameter name in the function header
+                onClick = onNavigateToRegister,
                 contentPadding = PaddingValues(0.dp)
             ) {
                 Text(
                     text = "Create Account",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4CAF50)
+                    color = ecoGreen
                 )
             }
         }

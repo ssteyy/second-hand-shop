@@ -1,5 +1,6 @@
 package com.secondhand.shop.screens.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -18,6 +20,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.secondhand.shop.R
 
 @Composable
@@ -25,28 +30,34 @@ fun RegisterScreen(
     onNavigateBack: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
+    // --- State Management ---
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val ecoGreen = Color(0xFF4CAF50)
 
-    // Using a Column directly without Scaffold to remove the AppBar
+    // Firebase instances
+    val auth = FirebaseAuth.getInstance()
+    val db = Firebase.firestore
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .verticalScroll(rememberScrollState()), // Ensures form is accessible on small screens
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(120.dp))
+        Spacer(modifier = Modifier.height(80.dp))
 
-        // --- Header Section (Your Logo) ---
+        // --- Header Section ---
         Image(
             painter = painterResource(id = R.mipmap.second_hand_shop_logo),
             contentDescription = "App Logo",
-            modifier = Modifier.size(120.dp)
+            modifier = Modifier.size(100.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -106,16 +117,59 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- Register Button ---
-        Button(
-            onClick = onRegisterSuccess,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ecoGreen)
-        ) {
-            Text("Register", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        // --- Register Button & Logic ---
+        if (isLoading) {
+            CircularProgressIndicator(color = ecoGreen)
+        } else {
+            Button(
+                onClick = {
+                    // Basic Validation
+                    if (email.isEmpty() || password.isEmpty() || fullName.isEmpty()) {
+                        Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (password != confirmPassword) {
+                        Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    isLoading = true
+                    // 1. Create user in Firebase Authentication
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                val uid = auth.currentUser?.uid ?: ""
+                                val user = hashMapOf(
+                                    "fullName" to fullName,
+                                    "email" to email,
+                                    "uid" to uid,
+                                    "createdAt" to System.currentTimeMillis()
+                                )
+                                // 2. Save info in Firestore
+                                db.collection("users").document(uid)
+                                    .set(user)
+                                    .addOnSuccessListener {
+                                        isLoading = false
+                                        onRegisterSuccess()
+                                    }
+                                    .addOnFailureListener { e ->
+                                        isLoading = false
+                                        Toast.makeText(context, "Database Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
+                            } else {
+                                isLoading = false
+                                Toast.makeText(context, "Auth Error: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ecoGreen)
+            ) {
+                Text("Register", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -126,16 +180,8 @@ fun RegisterScreen(
             modifier = Modifier.padding(bottom = 32.dp)
         ) {
             Text("Already have an account? ", color = Color.Gray, fontSize = 14.sp)
-            TextButton(
-                onClick = onNavigateBack,
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = "Login",
-                    color = ecoGreen,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
+            TextButton(onClick = onNavigateBack) {
+                Text("Login", color = ecoGreen, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -158,7 +204,9 @@ fun CustomOutlinedTextField(
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isPassword) KeyboardType.Password else keyboardType
+        ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = ecoGreen,
             focusedLabelColor = ecoGreen,
