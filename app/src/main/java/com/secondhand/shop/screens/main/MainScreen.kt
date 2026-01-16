@@ -1,6 +1,7 @@
 package com.secondhand.shop.screens.main
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,13 +30,14 @@ import com.secondhand.shop.screens.products.FavoritesScreen
 import com.secondhand.shop.screens.products.ManageListingsScreen
 
 /**
- * 1. Data Structure for Bottom Navigation
+ * 1. Data Structure for Bottom Navigation (Profile Added Here)
  */
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem("home_content", Icons.Default.Home, "Home")
-    object Favorites : BottomNavItem("favorites", Icons.Default.Favorite, "Favorites")
+    object Favorites : BottomNavItem("favorites", Icons.Default.Favorite, "Saved")
     object Sell : BottomNavItem("sell", Icons.Default.AddCircle, "Sell")
     object Chat : BottomNavItem("chat", Icons.Default.Chat, "Chat")
+    object Profile : BottomNavItem("profile_content", Icons.Default.Person, "Profile")
 }
 
 /**
@@ -44,7 +46,6 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(rootNavController: NavHostController) {
-    // internalNavController manages tabs (Home, Favorites, Chat, Profile)
     val internalNavController = rememberNavController()
 
     val ecoGreen = Color(0xFF4CAF50)
@@ -56,7 +57,7 @@ fun MainScreen(rootNavController: NavHostController) {
 
     Scaffold(
         topBar = {
-            // Hide TopBar for specific internal sub-screens if needed
+            // Only show TopBar on main tabs, hide on sub-screens like search or manage listings
             if (currentRoute != "search_filter" && currentRoute != "manage_listings") {
                 TopAppBar(
                     title = {
@@ -75,23 +76,12 @@ fun MainScreen(rootNavController: NavHostController) {
                             )
                         }
                     },
-                    actions = {
-                        // Access Profile via Top Bar
-                        IconButton(onClick = {
-                            internalNavController.navigate("profile_content") {
-                                popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }) {
-                            Icon(Icons.Default.AccountCircle, "Profile", tint = white, modifier = Modifier.size(28.dp))
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
                 )
             }
         },
         bottomBar = {
+            // Hide bottom bar when in the search filter screen
             if (currentRoute != "search_filter") {
                 NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
                     val currentDestination = navBackStackEntry?.destination
@@ -100,7 +90,8 @@ fun MainScreen(rootNavController: NavHostController) {
                         BottomNavItem.Home,
                         BottomNavItem.Favorites,
                         BottomNavItem.Sell,
-                        BottomNavItem.Chat
+                        BottomNavItem.Chat,
+                        BottomNavItem.Profile // Profile is now a tab
                     )
 
                     items.forEach { item ->
@@ -108,7 +99,13 @@ fun MainScreen(rootNavController: NavHostController) {
 
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label, color = if (isSelected) white else white.copy(alpha = 0.7f)) },
+                            label = {
+                                Text(
+                                    text = item.label,
+                                    fontSize = 10.sp,
+                                    color = if (isSelected) white else white.copy(alpha = 0.7f)
+                                )
+                            },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = white,
@@ -120,7 +117,9 @@ fun MainScreen(rootNavController: NavHostController) {
                                     rootNavController.navigate("add_product")
                                 } else {
                                     internalNavController.navigate(item.route) {
-                                        popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
+                                        popUpTo(internalNavController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -138,7 +137,6 @@ fun MainScreen(rootNavController: NavHostController) {
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // --- HOME TAB ---
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
                     onNavigateToSearch = { internalNavController.navigate("search_filter") },
@@ -146,35 +144,27 @@ fun MainScreen(rootNavController: NavHostController) {
                 )
             }
 
-            // --- FAVORITES TAB ---
             composable(BottomNavItem.Favorites.route) {
-                // Pass the click logic to push to Product Detail using rootNavController
                 FavoritesScreen(
-                    onProductClick = { productId ->
-                        rootNavController.navigate("product_detail")
-                        // Note: If your detail route needs an ID, use "product_detail/$productId"
-                    }
+                    onProductClick = { rootNavController.navigate("product_detail") }
                 )
             }
 
-            // --- SELL TAB (Redirect) ---
             composable(BottomNavItem.Sell.route) {
                 LaunchedEffect(Unit) {
                     rootNavController.navigate("add_product")
                 }
             }
 
-            // --- CHAT TAB ---
             composable(BottomNavItem.Chat.route) { PlaceholderScreen("Messages") }
 
-            // --- PROFILE TAB ---
-            composable("profile_content") {
+            composable(BottomNavItem.Profile.route) {
                 ProfileScreen(onNavigateToListings = {
                     internalNavController.navigate("manage_listings")
                 })
             }
 
-            // --- MANAGE LISTINGS (Sub-screen) ---
+            // Sub-screens
             composable("manage_listings") {
                 ManageListingsScreen(
                     onBack = { internalNavController.popBackStack() },
@@ -182,7 +172,6 @@ fun MainScreen(rootNavController: NavHostController) {
                 )
             }
 
-            // --- SEARCH FILTER (Sub-screen) ---
             composable("search_filter") {
                 SearchFilterScreen(onBack = { internalNavController.popBackStack() })
             }
@@ -193,23 +182,48 @@ fun MainScreen(rootNavController: NavHostController) {
 @Composable
 fun ProfileScreen(onNavigateToListings: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(80.dp), tint = Color.Gray)
-        Text("My Account", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onNavigateToListings,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-            shape = RoundedCornerShape(12.dp)
+        Surface(
+            modifier = Modifier.size(100.dp),
+            shape = CircleShape,
+            color = Color(0xFFF0F0F0)
         ) {
-            Icon(Icons.Default.List, null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Manage My Listings")
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier.padding(20.dp),
+                tint = Color.Gray
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("My Account", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text("user@example.com", fontSize = 14.sp, color = Color.Gray)
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Profile Menu Item
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onNavigateToListings() },
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.List, null, tint = Color(0xFF4CAF50))
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Manage My Listings", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray)
+            }
         }
     }
 }
