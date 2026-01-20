@@ -19,17 +19,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    profileViewModel: ProfileViewModel,
     onBack: () -> Unit,
-    onLogout: () -> Unit
+    onLogoutSuccess: () -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val lightGray = Color(0xFFF8F8F8)
 
-    // State for toggle examples
+    val user by profileViewModel.user.collectAsState()
+    val auth = FirebaseAuth.getInstance()
+
+    // UI-only states
     var notificationsEnabled by remember { mutableStateOf(true) }
     var darkModeEnabled by remember { mutableStateOf(false) }
 
@@ -38,41 +43,41 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(lightGray)
     ) {
-        // --- 1. Top Action Row (Header) ---
-        Surface(color = ecoGreen) {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = ecoGreen
-                )
-            )
-        }
 
-        // --- 2. Settings List ---
+        // --- Header ---
+        CenterAlignedTopAppBar(
+            title = {
+                Text(
+                    text = "Settings",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+            },
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = ecoGreen
+            )
+        )
+
+        // --- Content ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Section: Preferences
+
+            // --- Preferences ---
             SettingsSectionHeader("Preferences")
             SettingsToggleItem(
                 title = "Push Notifications",
@@ -89,46 +94,40 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: Security & Privacy
+            // --- Security ---
             SettingsSectionHeader("Security")
             SettingsClickableItem(
                 title = "Change Password",
                 icon = Icons.Default.LockReset,
-                onClick = { /* Navigate to Change Password */ }
-            )
-            SettingsClickableItem(
-                title = "Two-Factor Authentication",
-                icon = Icons.Default.VerifiedUser,
-                onClick = { /* Setup 2FA */ }
+                onClick = { /* Navigate to change password */ }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section: App Info
+            // --- App Info ---
             SettingsSectionHeader("Information")
-            SettingsClickableItem(
-                title = "Terms of Service",
-                icon = Icons.Default.Description,
-                onClick = { /* Show Terms */ }
-            )
             SettingsClickableItem(
                 title = "App Version",
                 icon = Icons.Default.Info,
                 subtitle = "1.0.2 (Beta)",
-                onClick = { }
+                onClick = {}
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // --- 3. Logout Button ---
+            // --- Logout ---
             Button(
-                onClick = onLogout,
+                onClick = {
+                    auth.signOut()
+                    profileViewModel.clearUser()
+                    onLogoutSuccess()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFEBEE), // Very light red
+                    containerColor = Color(0xFFFFEBEE),
                     contentColor = Color.Red
                 ),
                 shape = RoundedCornerShape(16.dp),
@@ -144,15 +143,18 @@ fun SettingsScreen(
             }
 
             Text(
-                text = "Signed in as sok.nimol@email.com",
+                text = "Signed in as ${user?.email ?: "Loading..."}",
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 color = Color.Gray,
                 fontSize = 12.sp
             )
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
+
+// --- Helper Composables ---
 
 @Composable
 fun SettingsSectionHeader(title: String) {
@@ -160,41 +162,9 @@ fun SettingsSectionHeader(title: String) {
         text = title,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF4CAF50), // ecoGreen
+        color = Color(0xFF4CAF50),
         modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
     )
-}
-
-@Composable
-fun SettingsClickableItem(
-    title: String,
-    icon: ImageVector,
-    subtitle: String? = null,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null, tint = Color.Gray, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                if (subtitle != null) {
-                    Text(subtitle, color = Color.Gray, fontSize = 12.sp)
-                }
-            }
-            Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray)
-        }
-    }
 }
 
 @Composable
@@ -231,6 +201,38 @@ fun SettingsToggleItem(
                     checkedTrackColor = Color(0xFF4CAF50)
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun SettingsClickableItem(
+    title: String,
+    icon: ImageVector,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                if (subtitle != null) {
+                    Text(subtitle, color = Color.Gray, fontSize = 12.sp)
+                }
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = Color.LightGray)
         }
     }
 }

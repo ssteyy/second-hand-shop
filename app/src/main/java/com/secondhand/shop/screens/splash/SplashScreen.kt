@@ -12,19 +12,30 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.R
 import kotlinx.coroutines.delay
 
-
 @Composable
-fun SplashScreen(onNavigateToLogin: () -> Unit) {
+fun SplashScreen(
+    onNavigateToLogin: () -> Unit,
+    onNavigateToMain: () -> Unit
+) {
+    val auth = FirebaseAuth.getInstance()
 
-    // This effect runs once when the screen is shown
     LaunchedEffect(Unit) {
-        delay(3000) // Wait for 3 seconds
-        onNavigateToLogin() // Navigate to the next screen
+        delay(3000) // splash delay
+
+        if (auth.currentUser != null) {
+            // User already logged in
+            onNavigateToMain()
+        } else {
+            // User not logged in
+            onNavigateToLogin()
+        }
     }
 
+    // ===== UI (UNCHANGED) =====
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -35,8 +46,6 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // 1. App Logo (Replace 'ic_launcher_foreground' with your actual logo name)
-            // If you don't have a logo yet, this uses a default Android icon
             Icon(
                 painter = painterResource(id = R.mipmap.second_hand_shop_logo),
                 contentDescription = "App Logo",
@@ -46,7 +55,6 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 2. App Name
             Text(
                 text = "Second-Hand Shop",
                 style = MaterialTheme.typography.headlineMedium.copy(
@@ -58,7 +66,6 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Tagline
             Text(
                 text = "Buy & Sell with Ease",
                 style = MaterialTheme.typography.bodyMedium,
@@ -67,7 +74,6 @@ fun SplashScreen(onNavigateToLogin: () -> Unit) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // 3. Loading Indicator
             CircularProgressIndicator(
                 color = Color(0xFF4CAF50),
                 strokeWidth = 3.dp,

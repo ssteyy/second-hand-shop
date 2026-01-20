@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,23 +29,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProfileScreen(onBack: () -> Unit) {
-    // --- State Management ---
-    var name by remember { mutableStateOf("Sok Nimol") }
-    var email by remember { mutableStateOf("sok.nimol@email.com") }
-    var phone by remember { mutableStateOf("+855 12 345 678") }
-    var bio by remember { mutableStateOf("Eco-friendly enthusiast and photography lover.") }
+fun EditProfileScreen(
+    profileViewModel: ProfileViewModel,
+    onBack: () -> Unit
+) {
+    val ecoGreen = Color(0xFF4CAF50)
+    val scope = rememberCoroutineScope()
+
+    // --- Fetch current user data from ViewModel ---
+    val user by profileViewModel.user.collectAsState()
+
+    // --- State ---
+    var name by remember { mutableStateOf(user?.fullName ?: "") }
+    var email by remember { mutableStateOf(user?.email ?: "") }
+    var phone by remember { mutableStateOf(user?.phone ?: "") }
+    var bio by remember { mutableStateOf(user?.bio ?: "") }
 
     // Image States
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var showSheet by remember { mutableStateOf(false) }
-
     val sheetState = rememberModalBottomSheetState()
-    val ecoGreen = Color(0xFF4CAF50)
 
     // --- Launchers ---
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -72,7 +81,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // --- 1. Top Action Row with EcoGreen Background ---
+        // --- Header ---
         Surface(color = ecoGreen) {
             CenterAlignedTopAppBar(
                 title = {
@@ -93,7 +102,26 @@ fun EditProfileScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    TextButton(onClick = onBack) {
+                    TextButton(onClick = {
+                        // --- Save to Firestore ---
+                        val db = Firebase.firestore
+                        val uid = user?.uid ?: return@TextButton
+                        val updatedUser = hashMapOf(
+                            "fullName" to name,
+                            "email" to email,
+                            "phone" to phone,
+                            "bio" to bio
+                        )
+
+                        scope.launch {
+                            db.collection("users").document(uid)
+                                .update(updatedUser as Map<String, Any>)
+                                .addOnSuccessListener {
+                                    profileViewModel.refreshUser() // refresh live data
+                                    onBack()
+                                }
+                        }
+                    }) {
                         Text(
                             text = "Save",
                             color = Color.White,
@@ -103,13 +131,11 @@ fun EditProfileScreen(onBack: () -> Unit) {
                     }
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = ecoGreen
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = ecoGreen)
             )
         }
 
-        // --- Content Section (Scrollable) ---
+        // --- Content ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,7 +145,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- 2. Profile Photo Edit ---
+            // --- Profile Image ---
             Box {
                 Box(
                     modifier = Modifier
@@ -129,27 +155,27 @@ fun EditProfileScreen(onBack: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        capturedBitmap != null -> {
-                            Image(
-                                bitmap = capturedBitmap!!.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        selectedImageUri != null -> {
-                            AsyncImage(
-                                model = selectedImageUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        else -> {
-                            Text("SN", fontSize = 28.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        }
+                        capturedBitmap != null -> Image(
+                            bitmap = capturedBitmap!!.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        selectedImageUri != null -> AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        else -> Text(
+                            text = name.take(2).uppercase(),
+                            fontSize = 28.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
+
                 IconButton(
                     onClick = { showSheet = true },
                     modifier = Modifier
@@ -168,7 +194,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- 3. Form Fields (Labels Aligned Left) ---
+            // --- Form Fields ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 EditFieldLabel("Full Name")
                 OutlinedTextField(
@@ -181,7 +207,6 @@ fun EditProfileScreen(onBack: () -> Unit) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
                 EditFieldLabel("Email Address")
                 OutlinedTextField(
                     value = email,
@@ -193,7 +218,6 @@ fun EditProfileScreen(onBack: () -> Unit) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
                 EditFieldLabel("Phone Number")
                 OutlinedTextField(
                     value = phone,
@@ -205,7 +229,6 @@ fun EditProfileScreen(onBack: () -> Unit) {
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-
                 EditFieldLabel("Bio")
                 OutlinedTextField(
                     value = bio,
@@ -223,7 +246,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
         }
     }
 
-    // --- Image Picker Bottom Sheet ---
+    // --- Bottom Sheet: Pick Image ---
     if (showSheet) {
         ModalBottomSheet(
             onDismissRequest = { showSheet = false },
@@ -247,9 +270,10 @@ fun EditProfileScreen(onBack: () -> Unit) {
                     leadingContent = { Icon(Icons.Default.CameraAlt, null, tint = ecoGreen) },
                     modifier = Modifier.clickable {
                         showSheet = false
-                        cameraLauncher.launch()
+                        cameraLauncher.launch(null) // ✅ Pass null for TakePicturePreview
                     }
                 )
+
                 ListItem(
                     headlineContent = { Text("Choose from Gallery") },
                     leadingContent = { Icon(Icons.Default.PhotoLibrary, null, tint = ecoGreen) },
@@ -265,6 +289,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
     }
 }
 
+// --- Helpers ---
 @Composable
 fun EditFieldLabel(text: String) {
     Text(
@@ -273,7 +298,7 @@ fun EditFieldLabel(text: String) {
         fontWeight = FontWeight.Bold,
         color = Color.Gray,
         modifier = Modifier
-            .fillMaxWidth() // Added to ensure it respects parent width
+            .fillMaxWidth()
             .padding(start = 4.dp, bottom = 6.dp)
     )
 }

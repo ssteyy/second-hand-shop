@@ -16,7 +16,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,10 +33,9 @@ import com.secondhand.shop.screens.products.ProductDetailScreen
 import com.secondhand.shop.screens.profile.EditProfileScreen
 import com.secondhand.shop.screens.profile.SettingsScreen
 import com.secondhand.shop.screens.profile.UserScreen
+import com.secondhand.shop.screens.profile.ProfileViewModel
 
-/**
- * 1. Data Structure for Bottom Navigation
- */
+// --- Bottom Navigation Items ---
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem("home_content", Icons.Default.Home, "Home")
     object Favorites : BottomNavItem("favorites", Icons.Default.Favorite, "Saved")
@@ -46,12 +44,9 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
     object Profile : BottomNavItem("profile_content", Icons.Default.Person, "Profile")
 }
 
-/**
- * 2. Main Container
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(rootNavController: NavHostController) {
+fun MainScreen(rootNavController: NavHostController, profileViewModel: ProfileViewModel) {
     val internalNavController = rememberNavController()
     val ecoGreen = Color(0xFF4CAF50)
     val darkEcoGreen = Color(0xFF388E3C)
@@ -60,16 +55,14 @@ fun MainScreen(rootNavController: NavHostController) {
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Define routes where UI components should be hidden
+    // Hide top/bottom bar on sub-screens
+    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+    val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
     val isChatDetail = currentRoute?.startsWith("chat_detail") == true
     val isProductDetail = currentRoute == "product_detail"
 
-    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
-    val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
-
     Scaffold(
         topBar = {
-            // Show TopBar only on main tabs, hide on sub-screens or detail screens
             if (currentRoute !in hideTopBarRoutes && !isChatDetail && !isProductDetail) {
                 TopAppBar(
                     title = {
@@ -80,7 +73,12 @@ fun MainScreen(rootNavController: NavHostController) {
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Second-Hand Shop", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = white)
+                            Text(
+                                "Second-Hand Shop",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = white
+                            )
                         }
                     },
                     actions = {
@@ -93,10 +91,9 @@ fun MainScreen(rootNavController: NavHostController) {
             }
         },
         bottomBar = {
-            // Hide Navigation Bar on Detail screens and Search
             if (currentRoute !in hideBottomBarRoutes && !isChatDetail && !isProductDetail) {
                 NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
-                    val currentDestination = navBackStackEntry?.destination
+                    val currentDestinationRoute = navBackStackEntry?.destination?.route
                     val items = listOf(
                         BottomNavItem.Home,
                         BottomNavItem.Favorites,
@@ -106,7 +103,7 @@ fun MainScreen(rootNavController: NavHostController) {
                     )
 
                     items.forEach { item ->
-                        val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                        val isSelected = currentDestinationRoute == item.route
 
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
@@ -139,7 +136,6 @@ fun MainScreen(rootNavController: NavHostController) {
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // --- HOME TAB ---
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
                     onNavigateToSearch = { internalNavController.navigate("search_filter") },
@@ -147,21 +143,19 @@ fun MainScreen(rootNavController: NavHostController) {
                 )
             }
 
-            // --- SAVED TAB ---
             composable(BottomNavItem.Favorites.route) {
                 FavoritesScreen() { internalNavController.popBackStack() }
             }
 
-            // --- CHAT TAB ---
             composable(BottomNavItem.Chat.route) {
                 ChatListScreen(onChatClick = { userName ->
                     internalNavController.navigate("chat_detail/$userName")
                 })
             }
 
-            // --- PROFILE TAB ---
             composable(BottomNavItem.Profile.route) {
                 UserScreen(
+                    viewModel = profileViewModel,
                     onNavigateToEdit = { internalNavController.navigate("edit_profile") },
                     onNavigateToListings = { internalNavController.navigate("manage_listings") },
                     onNavigateToSettings = { internalNavController.navigate("settings") },
@@ -169,15 +163,10 @@ fun MainScreen(rootNavController: NavHostController) {
                 )
             }
 
-            // --- DETAIL & SUB-SCREENS ---
-
             composable("product_detail") {
                 ProductDetailScreen(
                     onBack = { internalNavController.popBackStack() },
-                    onChatClicked = {
-                        // You can pass a specific name here or a dynamic ID
-                        internalNavController.navigate("chat_detail/Sok Nimol")
-                    }
+                    onChatClicked = { internalNavController.navigate("chat_detail/Sok Nimol") }
                 )
             }
 
@@ -205,13 +194,17 @@ fun MainScreen(rootNavController: NavHostController) {
             }
 
             composable("edit_profile") {
-                EditProfileScreen(onBack = { internalNavController.popBackStack() })
+                EditProfileScreen(
+                    profileViewModel = profileViewModel,
+                    onBack = { internalNavController.popBackStack() }
+                )
             }
 
             composable("settings") {
                 SettingsScreen(
+                    profileViewModel = profileViewModel,
                     onBack = { internalNavController.popBackStack() },
-                    onLogout = {
+                    onLogoutSuccess = {
                         FirebaseAuth.getInstance().signOut()
                         rootNavController.navigate("login") {
                             popUpTo(0)

@@ -11,6 +11,8 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,23 +24,23 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun UserScreen(
+    viewModel: ProfileViewModel,
     onNavigateToEdit: () -> Unit,
     onNavigateToListings: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToFavorites: () -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
+    val user by viewModel.user.collectAsState()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .height(30.dp)
             .background(Color(0xFFF8F8F8))
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // --- Profile Header Card (SHORTER VERSION) ---
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+
+            // --- Profile Header ---
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -48,13 +50,12 @@ fun UserScreen(
                     Column(
                         modifier = Modifier
                             .statusBarsPadding()
-                            .padding(vertical = 16.dp, horizontal = 24.dp), // Reduced vertical padding
+                            .padding(vertical = 16.dp, horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Smaller Profile Icon
                         Box(
                             modifier = Modifier
-                                .size(80.dp) // Reduced from 100.dp
+                                .size(80.dp)
                                 .clip(CircleShape)
                                 .background(ecoGreen.copy(alpha = 0.1f)),
                             contentAlignment = Alignment.Center
@@ -67,38 +68,50 @@ fun UserScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp)) // Reduced spacer
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = "Sok Nimol",
-                            fontSize = 20.sp, // Slightly smaller text
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-
-                        Text(
-                            text = "sok.nimol@email.com",
-                            fontSize = 13.sp,
-                            color = Color.Gray
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp)) // Reduced spacer
-
-                        // Compact Edit Button
-                        Button(
-                            onClick = onNavigateToEdit,
-                            colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(38.dp), // Reduced height
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                        if (user == null) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = ecoGreen,
+                                strokeWidth = 2.dp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Edit Profile", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            // ✅ Use fullName here
+                            Text(
+                                text = user?.fullName ?: "No Name",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+
+                            Text(
+                                text = user?.email ?: "",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Button(
+                                onClick = onNavigateToEdit,
+                                colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(38.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Edit Profile",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }
@@ -138,13 +151,13 @@ fun UserScreen(
                     ProfileMenuItem(
                         title = "Help Center",
                         icon = Icons.Default.HelpOutline,
-                        onClick = { /* Navigate to Help */ }
+                        onClick = {}
                     )
 
                     ProfileMenuItem(
                         title = "Privacy Policy",
                         icon = Icons.Default.PrivacyTip,
-                        onClick = { /* Navigate to Privacy */ }
+                        onClick = {}
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))
@@ -166,18 +179,22 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun ProfileMenuItem(title: String, icon: ImageVector, onClick: () -> Unit) {
+fun ProfileMenuItem(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp) // Tighter list spacing
+            .padding(vertical = 3.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(10.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Row(
-            modifier = Modifier.padding(14.dp), // Slightly more compact padding
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
