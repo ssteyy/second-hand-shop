@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.secondhand.shop" />
-                  <option name="mobileSdkAppId" value="1:815621352108:android:b9133cac629c7019f40d09" />
-                  <option name="projectId" value="secondhandshop-1a0c7" />
-                  <option name="projectNumber" value="815621352108" />
+                  <option name="mobileSdkAppId" value="1:527421438101:android:3089a1e98efbbba011439c" />
+                  <option name="projectId" value="secondhandshop-new" />
+                  <option name="projectNumber" value="527421438101" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

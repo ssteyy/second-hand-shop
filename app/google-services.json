@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "815621352108",
-    "project_id": "secondhandshop-1a0c7",
-    "storage_bucket": "secondhandshop-1a0c7.firebasestorage.app"
+    "project_number": "527421438101",
+    "project_id": "secondhandshop-new",
+    "storage_bucket": "secondhandshop-new.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:815621352108:android:b9133cac629c7019f40d09",
+        "mobilesdk_app_id": "1:527421438101:android:3089a1e98efbbba011439c",
         "android_client_info": {
           "package_name": "com.secondhand.shop"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAkRe-Oehl__47tprCezIchAp75xJ2jr0Q"
+          "current_key": "AIzaSyAHDyzgjH_jtjS9NkgTAOw0Hd-mMdFKm5M"
         }
       ],
       "services": {

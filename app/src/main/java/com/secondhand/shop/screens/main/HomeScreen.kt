@@ -19,12 +19,16 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun HomeScreen(
     onNavigateToSearch: () -> Unit,
-    onProductClick: () -> Unit // 1. Added parameter for product navigation
+    onProductClick: (String) -> Unit // 1. Correct: pass productId
 ) {
     val ecoGreen = Color(0xFF4CAF50)
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF7F7F7))) {
-        // 1. Custom Search Bar Header
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF7F7F7))
+    ) {
+        // 1. Search Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -59,7 +63,6 @@ fun HomeScreen(
             fontSize = 18.sp
         )
 
-        // 2. Pass the lambda to the ProductGrid
         ProductGrid(onProductClick = onProductClick)
     }
 }
@@ -99,7 +102,9 @@ fun CategoryRow(ecoGreen: Color) {
 }
 
 @Composable
-fun ProductGrid(onProductClick: () -> Unit) {
+fun ProductGrid(onProductClick: (String) -> Unit) { // 2. Accept productId
+    val dummyProducts = List(10) { index -> "product_$index" } // dummy product IDs
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(16.dp),
@@ -107,19 +112,18 @@ fun ProductGrid(onProductClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(10) { index ->
-            // 3. Pass the lambda to each ProductItem
-            ProductItem(onClick = onProductClick)
+        items(dummyProducts) { productId ->
+            ProductItem(productId = productId, onClick = onProductClick)
         }
     }
 }
 
 @Composable
-fun ProductItem(onClick: () -> Unit) {
+fun ProductItem(productId: String, onClick: (String) -> Unit) { // 3. Pass productId
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }, // 4. Wrap card in clickable modifier
+            .clickable { onClick(productId) }, // 4. Pass id to lambda
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)

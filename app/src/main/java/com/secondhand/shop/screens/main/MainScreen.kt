@@ -19,24 +19,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.R
 import com.secondhand.shop.screens.chat.ChatDetailScreen
 import com.secondhand.shop.screens.chat.ChatListScreen
 import com.secondhand.shop.screens.notifications.NotificationsScreen
-import com.secondhand.shop.screens.products.FavoritesScreen
-import com.secondhand.shop.screens.products.ManageListingsScreen
-import com.secondhand.shop.screens.products.ProductDetailScreen
-import com.secondhand.shop.screens.profile.EditProfileScreen
-import com.secondhand.shop.screens.profile.SettingsScreen
-import com.secondhand.shop.screens.profile.UserScreen
-import com.secondhand.shop.screens.profile.ProfileViewModel
+import com.secondhand.shop.screens.products.*
+import com.secondhand.shop.screens.profile.*
 
-// --- Bottom Navigation Items ---
 sealed class BottomNavItem(
     val route: String,
     val icon: ImageVector,
@@ -63,10 +59,12 @@ fun MainScreen(
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Routes where bars are hidden
     val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
     val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+
     val isChatDetail = currentRoute?.startsWith("chat_detail") == true
-    val isProductDetail = currentRoute == "product_detail"
+    val isProductDetail = currentRoute?.startsWith("product_detail") == true
 
     Scaffold(
         topBar = {
@@ -77,13 +75,11 @@ fun MainScreen(
                             Image(
                                 painter = painterResource(id = R.mipmap.logo_with_bg),
                                 contentDescription = "App Logo",
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
+                                modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Second-Hand Shop",
+                                "Second-Hand Shop",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = white
@@ -91,19 +87,11 @@ fun MainScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
-                            internalNavController.navigate("notifications")
-                        }) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = "Notifications",
-                                tint = white
-                            )
+                        IconButton(onClick = { internalNavController.navigate("notifications") }) {
+                            Icon(Icons.Default.Notifications, "Notifications", tint = white)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = ecoGreen
-                    )
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
                 )
             }
         },
@@ -120,21 +108,9 @@ fun MainScreen(
 
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
-
                         NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = item.label
-                                )
-                            },
-                            label = {
-                                Text(
-                                    item.label,
-                                    fontSize = 10.sp,
-                                    color = if (isSelected) white else white.copy(alpha = 0.7f)
-                                )
-                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label, fontSize = 10.sp) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = white,
@@ -146,9 +122,7 @@ fun MainScreen(
                                     rootNavController.navigate("add_product")
                                 } else {
                                     internalNavController.navigate(item.route) {
-                                        popUpTo(
-                                            internalNavController.graph.findStartDestination().id
-                                        ) { saveState = true }
+                                        popUpTo(internalNavController.graph.findStartDestination().id) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -165,52 +139,61 @@ fun MainScreen(
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-
+            // Home Screen
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
-                    onNavigateToSearch = {
-                        internalNavController.navigate("search_filter")
-                    },
-                    onProductClick = {
-                        internalNavController.navigate("product_detail")
+                    onNavigateToSearch = { internalNavController.navigate("search_filter") },
+                    onProductClick = { productId: String ->
+                        internalNavController.navigate("product_detail/$productId")
                     }
                 )
             }
 
+            // Favorites Screen
             composable(BottomNavItem.Favorites.route) {
-                FavoritesScreen {
-                    internalNavController.popBackStack()
-                }
+                FavoritesScreen(
+                    onProductClick = { productId: String ->
+                        internalNavController.navigate("product_detail/$productId")
+                    }
+                )
             }
 
+            // Chat List Screen
             composable(BottomNavItem.Chat.route) {
-                ChatListScreen { userName ->
+                ChatListScreen { userName: String ->
                     internalNavController.navigate("chat_detail/$userName")
                 }
             }
 
+            // Profile Screen
             composable(BottomNavItem.Profile.route) {
                 UserScreen(
                     viewModel = profileViewModel,
                     onNavigateToEdit = { internalNavController.navigate("edit_profile") },
                     onNavigateToListings = { internalNavController.navigate("manage_listings") },
                     onNavigateToSettings = { internalNavController.navigate("settings") },
-                    onNavigateToFavorites = {
-                        internalNavController.navigate(BottomNavItem.Favorites.route)
-                    }
+                    onNavigateToFavorites = { internalNavController.navigate(BottomNavItem.Favorites.route) }
                 )
             }
 
-            composable("product_detail") {
+            // Product Detail Screen
+            composable(
+                route = "product_detail/{productId}",
+                arguments = listOf(navArgument("productId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val productId = backStackEntry.arguments?.getString("productId") ?: ""
                 ProductDetailScreen(
+                    productId = productId,
                     onBack = { internalNavController.popBackStack() },
-                    onChatClicked = {
-                        internalNavController.navigate("chat_detail/Sok Nimol")
-                    }
+                    onChatClicked = { /* Optional chat logic */ }
                 )
             }
 
-            composable("chat_detail/{userName}") { backStackEntry ->
+            // Chat Detail Screen
+            composable(
+                route = "chat_detail/{userName}",
+                arguments = listOf(navArgument("userName") { type = NavType.StringType })
+            ) { backStackEntry ->
                 val userName = backStackEntry.arguments?.getString("userName") ?: "User"
                 ChatDetailScreen(
                     userName = userName,
@@ -218,43 +201,30 @@ fun MainScreen(
                 )
             }
 
+            // Manage Listings Screen
             composable("manage_listings") {
                 ManageListingsScreen(
                     onBack = { internalNavController.popBackStack() },
-                    onEditProduct = {
-                        rootNavController.navigate("add_product")
+                    onEditProduct = { productId: String ->
+                        rootNavController.navigate("add_product?productId=$productId")
+                    },
+                    onProductClick = { productId: String ->
+                        internalNavController.navigate("product_detail/$productId")
                     }
                 )
             }
 
-            composable("search_filter") {
-                SearchFilterScreen(
-                    onBack = { internalNavController.popBackStack() }
-                )
-            }
-
-            composable("notifications") {
-                NotificationsScreen(
-                    onBack = { internalNavController.popBackStack() }
-                )
-            }
-
-            composable("edit_profile") {
-                EditProfileScreen(
-                    profileViewModel = profileViewModel,
-                    onBack = { internalNavController.popBackStack() }
-                )
-            }
-
+            // Other screens
+            composable("search_filter") { SearchFilterScreen(onBack = { internalNavController.popBackStack() }) }
+            composable("notifications") { NotificationsScreen(onBack = { internalNavController.popBackStack() }) }
+            composable("edit_profile") { EditProfileScreen(profileViewModel = profileViewModel, onBack = { internalNavController.popBackStack() }) }
             composable("settings") {
                 SettingsScreen(
                     profileViewModel = profileViewModel,
                     onBack = { internalNavController.popBackStack() },
                     onLogoutSuccess = {
                         FirebaseAuth.getInstance().signOut()
-                        rootNavController.navigate("login") {
-                            popUpTo(0)
-                        }
+                        rootNavController.navigate("login") { popUpTo(0) }
                     }
                 )
             }
