@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,40 +48,33 @@ fun FavoritesScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "My Favorites",
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.5.sp
-                    )
-                },
-                navigationIcon = {
-                    val onBack = null
-                    IconButton(onClick = { onBack }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
-                ),
-                modifier = Modifier.statusBarsPadding()
-            )
-        }
-    ) { padding ->
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .background(Color.White)
+                .statusBarsPadding()
         ) {
-            // Header Info Area
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "My Favorites",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp,
+                    color = Color.Black
+                )
+            }
+
+            // Sub-header: Item Count
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -120,10 +112,7 @@ fun FavoritesScreen(
                         FavoriteProductCard(
                             product = product,
                             ecoGreen = ecoGreen,
-                            onCardClick = {
-                                // This triggers the navigation in MainScreen/MainActivity
-                                onProductClick(product.id)
-                            },
+                            onCardClick = { onProductClick(product.id) },
                             onRemoveClick = { favoriteItems.remove(product) }
                         )
                     }

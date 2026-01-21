@@ -112,7 +112,11 @@ class MainActivity : ComponentActivity() {
                         composable("add_product") {
                             AddProductScreen(
                                 onBack = { rootNavController.popBackStack() },
-                                onPostSuccess = { rootNavController.popBackStack() }
+                                onPostSuccess = { rootNavController.popBackStack() },
+                                onNotificationsClick = {
+                                    // 1. Close the Add Product screen
+                                    rootNavController.popBackStack()
+                                }
                             )
                         }
                     }

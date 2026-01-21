@@ -33,7 +33,7 @@ import com.secondhand.shop.screens.main.BottomNavItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
+fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit, onNotificationsClick: () -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
     val darkEcoGreen = Color(0xFF388E3C)
     val white = Color.White
@@ -83,33 +83,37 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            // Apply MainScreen Style: Logo + Green Background
+            TopAppBar(
                 title = {
-                    Text(
-                        text = "Post New Item",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = white
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = white
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.mipmap.logo_with_bg),
+                            contentDescription = "App Logo",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Second-Hand Shop",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = white
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF4CAF50),
-                    titleContentColor = white,
-                    navigationIconContentColor = white
-                )
+                actions = {
+                    IconButton(onClick = onNotificationsClick) { // Use it here
+                        Icon(Icons.Default.Notifications, "Notifications", tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = ecoGreen, tonalElevation = 8.dp) {
+            // Apply MainScreen Style NavigationBar
+            NavigationBar(containerColor = ecoGreen) {
                 val items = listOf(
                     BottomNavItem.Home,
                     BottomNavItem.Favorites,
@@ -175,7 +179,7 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 }
             }
 
-            // --- Title Field ---
+            // --- Form Fields ---
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -185,56 +189,49 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 colors = customTextFieldColors
             )
 
-            // --- Category Selection ---
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ExposedDropdownMenuBox(
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = !categoryExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                    colors = customTextFieldColors,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
                     expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded },
-                    modifier = Modifier.fillMaxWidth()
+                    onDismissRequest = { categoryExpanded = false }
                 ) {
-                    OutlinedTextField(
-                        value = selectedCategory,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        colors = customTextFieldColors,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category) },
-                                onClick = {
-                                    selectedCategory = category
-                                    categoryExpanded = false
-                                }
-                            )
-                        }
+                    categories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                selectedCategory = category
+                                categoryExpanded = false
+                            }
+                        )
                     }
-                }
-
-                if (selectedCategory == "Other") {
-                    OutlinedTextField(
-                        value = customCategoryName,
-                        onValueChange = { customCategoryName = it },
-                        label = { Text("Category Name") },
-                        placeholder = { Text("Enter your custom category") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = customTextFieldColors,
-                        singleLine = true
-                    )
                 }
             }
 
-            // --- Price and Condition Row ---
+            if (selectedCategory == "Other") {
+                OutlinedTextField(
+                    value = customCategoryName,
+                    onValueChange = { customCategoryName = it },
+                    label = { Text("Category Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = customTextFieldColors
+                )
+            }
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = price,
@@ -242,8 +239,7 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                     label = { Text("Price ($)") },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = customTextFieldColors,
-                    singleLine = true
+                    colors = customTextFieldColors
                 )
 
                 ExposedDropdownMenuBox(
@@ -264,8 +260,7 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
 
                     ExposedDropdownMenu(
                         expanded = conditionExpanded,
-                        onDismissRequest = { conditionExpanded = false },
-                        modifier = Modifier.background(Color.White)
+                        onDismissRequest = { conditionExpanded = false }
                     ) {
                         conditions.forEach { condition ->
                             DropdownMenuItem(
@@ -280,7 +275,6 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 }
             }
 
-            // --- Description Field ---
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -290,7 +284,6 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
                 colors = customTextFieldColors
             )
 
-            // --- Submit Button ---
             Button(
                 onClick = onPostSuccess,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -299,8 +292,6 @@ fun AddProductScreen(onBack: () -> Unit, onPostSuccess: () -> Unit) {
             ) {
                 Text("Post Item Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
         if (showSheet) {
