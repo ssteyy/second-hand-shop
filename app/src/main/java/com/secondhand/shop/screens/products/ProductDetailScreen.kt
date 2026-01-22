@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.secondhand.shop.model.Product
 import com.secondhand.shop.repository.ProductRepository
@@ -30,7 +31,8 @@ import com.secondhand.shop.repository.ProductRepository
 fun ProductDetailScreen(
     productId: String, // Receive the ID from the navigation
     onBack: () -> Unit,
-    onChatClicked: () -> Unit
+    onChatClicked: () -> Unit,
+    onViewProfile: (String) -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val context = LocalContext.current
@@ -57,13 +59,12 @@ fun ProductDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
                         text = "Product Details",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -73,7 +74,9 @@ fun ProductDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors( // Match the colors
+                    containerColor = ecoGreen
+                )
             )
         },
         bottomBar = {

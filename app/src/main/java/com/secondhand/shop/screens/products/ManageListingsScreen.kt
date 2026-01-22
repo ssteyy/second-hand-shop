@@ -89,8 +89,9 @@ fun ManageListingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("My Listings", color = Color.White, fontWeight = FontWeight.Bold) },
+            CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = { Text("My Listings", color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)

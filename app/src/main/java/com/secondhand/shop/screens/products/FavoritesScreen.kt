@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,9 +33,11 @@ data class FavoriteProduct(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
+    onBack: () -> Unit, // 1. Added back navigation callback
     onProductClick: (String) -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
+    val white = Color.White
 
     // 1. Manage the list of favorites in a state
     val favoriteItems = remember {
@@ -48,33 +51,40 @@ fun FavoritesScreen(
         )
     }
 
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .statusBarsPadding()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "My Favorites",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp,
-                    color = Color.Black
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = {
+                    Text(
+                        text = "My Favorites",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = white,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = white
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors( // Match the colors
+                    containerColor = ecoGreen
                 )
-            }
-
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
             // Sub-header: Item Count
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -108,11 +118,12 @@ fun FavoritesScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // Inside your LazyVerticalGrid
                     items(favoriteItems, key = { it.id }) { product ->
                         FavoriteProductCard(
                             product = product,
                             ecoGreen = ecoGreen,
-                            onCardClick = { onProductClick(product.id) },
+                            onCardClick = { onProductClick(product.id) }, // This sends the ID back to MainScreen
                             onRemoveClick = { favoriteItems.remove(product) }
                         )
                     }
@@ -136,7 +147,7 @@ fun FavoriteProductCard(
         border = BorderStroke(1.dp, Color(0xFFEEEEEE)),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCardClick() } // Navigation trigger
+            .clickable { onCardClick() }
     ) {
         Column {
             Box(modifier = Modifier.height(160.dp)) {

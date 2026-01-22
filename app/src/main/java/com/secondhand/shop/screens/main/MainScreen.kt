@@ -60,15 +60,16 @@ fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Routes where bars are hidden
-    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "favorites", "notifications")
     val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
 
     val isChatDetail = currentRoute?.startsWith("chat_detail") == true
     val isProductDetail = currentRoute?.startsWith("product_detail") == true
+    val isSellerProfile = currentRoute?.startsWith("seller_profile") == true
 
     Scaffold(
         topBar = {
-            if (currentRoute !in hideTopBarRoutes && !isChatDetail && !isProductDetail) {
+            if (currentRoute !in hideTopBarRoutes && !isChatDetail && !isProductDetail && !isSellerProfile) {
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -110,7 +111,7 @@ fun MainScreen(
                         val isSelected = currentRoute == item.route
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label, fontSize = 10.sp) },
+                            label = { Text(item.label, fontSize = 10.sp, color = Color.White) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = white,
@@ -152,7 +153,8 @@ fun MainScreen(
             // Favorites Screen
             composable(BottomNavItem.Favorites.route) {
                 FavoritesScreen(
-                    onProductClick = { productId: String ->
+                    onBack = { internalNavController.popBackStack() },
+                    onProductClick = { productId ->
                         internalNavController.navigate("product_detail/$productId")
                     }
                 )
@@ -176,16 +178,21 @@ fun MainScreen(
                 )
             }
 
-            // Product Detail Screen
+            // Updated Product Detail Screen Route
             composable(
                 route = "product_detail/{productId}",
                 arguments = listOf(navArgument("productId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId") ?: ""
+
                 ProductDetailScreen(
                     productId = productId,
                     onBack = { internalNavController.popBackStack() },
-                    onChatClicked = { /* Optional chat logic */ }
+                    onChatClicked = { /* Optional chat logic */ },
+                    onViewProfile = { sellerId ->
+                        // This tells the app to go to the seller profile
+                        internalNavController.navigate("seller_profile/$sellerId")
+                    }
                 )
             }
 
@@ -209,6 +216,28 @@ fun MainScreen(
                         rootNavController.navigate("add_product?productId=$productId")
                     },
                     onProductClick = { productId: String ->
+                        internalNavController.navigate("product_detail/$productId")
+                    }
+                )
+            }
+
+            composable(
+                route = "seller_profile/{sellerName}/{sellerEmail}",
+                arguments = listOf(
+                    navArgument("sellerName") { type = NavType.StringType },
+                    navArgument("sellerEmail") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val name = backStackEntry.arguments?.getString("sellerName") ?: "Unknown"
+                val email = backStackEntry.arguments?.getString("sellerEmail") ?: ""
+
+                SellerProfileScreen(
+                    sellerName = name,
+                    sellerEmail = email,
+                    sellerImageUrl = null, // You can pass this via navigation if needed
+                    sellerProducts = emptyList(), // Fetch these from your Repository using seller ID
+                    onBack = { internalNavController.popBackStack() },
+                    onProductClick = { productId ->
                         internalNavController.navigate("product_detail/$productId")
                     }
                 )
