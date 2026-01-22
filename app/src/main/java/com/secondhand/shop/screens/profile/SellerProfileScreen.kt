@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -37,6 +36,7 @@ fun SellerProfileScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text("Seller Profile", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

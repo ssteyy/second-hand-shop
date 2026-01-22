@@ -188,17 +188,18 @@ fun MainScreen(
                 ProductDetailScreen(
                     productId = productId,
                     onBack = { internalNavController.popBackStack() },
-                    onChatClicked = { /* Optional chat logic */ },
                     onViewProfile = { sellerId ->
-                        // This tells the app to go to the seller profile
                         internalNavController.navigate("seller_profile/$sellerId")
+                    },
+                    onChatClicked = { sellerId ->
+                        internalNavController.navigate("chat_detail/$sellerId")
                     }
                 )
             }
 
             // Chat Detail Screen
             composable(
-                route = "chat_detail/{userName}",
+                route = "chat_detail/{userName}", // You can treat userName as sellerId/Name
                 arguments = listOf(navArgument("userName") { type = NavType.StringType })
             ) { backStackEntry ->
                 val userName = backStackEntry.arguments?.getString("userName") ?: "User"
@@ -221,21 +222,25 @@ fun MainScreen(
                 )
             }
 
+            // Seller Profile Screen
             composable(
-                route = "seller_profile/{sellerName}/{sellerEmail}",
+                route = "seller_profile/{sellerId}", // Updated to use ID
                 arguments = listOf(
-                    navArgument("sellerName") { type = NavType.StringType },
-                    navArgument("sellerEmail") { type = NavType.StringType }
+                    navArgument("sellerId") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
-                val name = backStackEntry.arguments?.getString("sellerName") ?: "Unknown"
-                val email = backStackEntry.arguments?.getString("sellerEmail") ?: ""
+                val sId = backStackEntry.arguments?.getString("sellerId") ?: ""
+
+                // Logic to fetch Seller info based on sId (Placeholder for now)
+                // In a real app, use a LaunchedEffect to fetch the user object from Firebase
+                val name = "Seller ${sId.take(5)}"
+                val email = "contact@seller.com"
 
                 SellerProfileScreen(
                     sellerName = name,
                     sellerEmail = email,
-                    sellerImageUrl = null, // You can pass this via navigation if needed
-                    sellerProducts = emptyList(), // Fetch these from your Repository using seller ID
+                    sellerImageUrl = null,
+                    sellerProducts = emptyList(), // Fetch these via ProductRepository.fetchUserProducts(sId)
                     onBack = { internalNavController.popBackStack() },
                     onProductClick = { productId ->
                         internalNavController.navigate("product_detail/$productId")

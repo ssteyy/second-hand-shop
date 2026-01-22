@@ -31,7 +31,7 @@ import com.secondhand.shop.repository.ProductRepository
 fun ProductDetailScreen(
     productId: String, // Receive the ID from the navigation
     onBack: () -> Unit,
-    onChatClicked: () -> Unit,
+    onChatClicked: (String) -> Unit,
     onViewProfile: (String) -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
@@ -74,7 +74,7 @@ fun ProductDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors( // Match the colors
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = ecoGreen
                 )
             )
@@ -103,7 +103,10 @@ fun ProductDetailScreen(
                         }
 
                         Button(
-                            onClick = onChatClicked,
+                            onClick = {
+                                // 3. Pass the sellerId from the current product
+                                onChatClicked(product!!.sellerId)
+                            },
                             modifier = Modifier.height(54.dp).weight(2.5f),
                             colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
                             shape = RoundedCornerShape(12.dp)
@@ -205,8 +208,13 @@ fun ProductDetailScreen(
                             Text(text = "Seller ID: ${currentProduct.sellerId.take(8)}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(text = "Verified Seller • 5.0 ★", color = ecoGreen, fontSize = 12.sp)
                         }
+                        // Inside ProductDetailScreen.kt -> Seller Card Row
+
                         OutlinedButton(
-                            onClick = { /* Profile Navigation */ },
+                            onClick = {
+                                // Calls the lambda passed from MainScreen with the actual sellerId
+                                onViewProfile(currentProduct.sellerId)
+                            },
                             shape = RoundedCornerShape(8.dp),
                             border = BorderStroke(1.dp, ecoGreen),
                             contentPadding = PaddingValues(horizontal = 12.dp)

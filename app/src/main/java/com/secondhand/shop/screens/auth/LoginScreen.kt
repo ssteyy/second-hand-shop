@@ -2,8 +2,10 @@ package com.secondhand.shop.screens.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -36,152 +38,161 @@ fun LoginScreen(
 
     val ecoGreen = Color(0xFF4CAF50)
     val auth = FirebaseAuth.getInstance()
+    val scrollState = rememberScrollState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // --- Header Section ---
-        Image(
-            painter = painterResource(id = R.mipmap.second_hand_shop_logo),
-            contentDescription = "App Logo",
-            modifier = Modifier.size(120.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Welcome Back",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF2E7D32)
-        )
-
-        Text(
-            text = "Sign in to continue shopping",
-            fontSize = 14.sp,
-            color = Color.Gray
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- Email Field ---
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email or Phone") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ecoGreen,
-                focusedLabelColor = ecoGreen,
-                cursorColor = ecoGreen
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- Password Field with Eye Icon ---
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            // 2. Toggle between dots and text
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            trailingIcon = {
-                val image = if (passwordVisible)
-                    Icons.Default.Visibility
-                else Icons.Default.VisibilityOff
-
-                // 3. Icon button to toggle the state
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = "Toggle password visibility", tint = Color.Gray)
-                }
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ecoGreen,
-                focusedLabelColor = ecoGreen,
-                cursorColor = ecoGreen
-            )
-        )
-
-        // --- Forgot Password ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(
-                onClick = onNavigateToForgotPwd,
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = "Forgot Password?",
-                    color = ecoGreen,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- Login Button ---
-        Button(
-            onClick = {
-                if (email.isNotBlank() && password.isNotBlank()) {
-                    auth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                onLoginSuccess()
-                            } else {
-                                // Error handling logic here
-                            }
-                        }
-                }
-            },
+    Scaffold(
+        containerColor = Color.White,
+        modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ecoGreen)
+                .fillMaxSize()
+                .padding(padding)
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp)
+                // 3. Make the column scrollable
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        }
+            Spacer(modifier = Modifier.height(150.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // --- Header Section ---
+            Image(
+                painter = painterResource(id = R.mipmap.second_hand_shop_logo),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(120.dp)
+            )
 
-        // --- Bottom Registration Link ---
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
-                text = "Don't have an account? ",
+                text = "Welcome Back",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E7D32)
+            )
+
+            Text(
+                text = "Sign in to continue shopping",
                 fontSize = 14.sp,
                 color = Color.Gray
             )
-            TextButton(
-                onClick = onNavigateToRegister,
-                contentPadding = PaddingValues(0.dp)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // --- Email Field ---
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email or Phone") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ecoGreen,
+                    focusedLabelColor = ecoGreen,
+                    cursorColor = ecoGreen,
+                    unfocusedContainerColor = Color(0xFFFAFAFA),
+                    focusedContainerColor = Color.White
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- Password Field ---
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = null, tint = Color.Gray)
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ecoGreen,
+                    focusedLabelColor = ecoGreen,
+                    cursorColor = ecoGreen,
+                    unfocusedContainerColor = Color(0xFFFAFAFA),
+                    focusedContainerColor = Color.White
+                )
+            )
+
+            // --- Forgot Password ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onNavigateToForgotPwd,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = "Forgot Password?",
+                        color = ecoGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- Login Button ---
+            Button(
+                onClick = {
+                    if (email.isNotBlank() && password.isNotBlank()) {
+                        auth.signInWithEmailAndPassword(email, password)
+                            .addOnCompleteListener { task ->
+                                if (task.isSuccessful) onLoginSuccess()
+                            }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ecoGreen)
+            ) {
+                Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- Updated Bottom Link Row ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Create Account",
+                    text = "Don't have an account? ",
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = ecoGreen
+                    color = Color.Gray
                 )
+                TextButton(
+                    onClick = onNavigateToRegister,
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    Text(
+                        text = "Create Account",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ecoGreen
+                    )
+                }
             }
+
+            // Extra spacer to allow scrolling past the button when keyboard is up
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
