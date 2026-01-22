@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,11 +35,23 @@ fun SellerProfileScreen(
 ) {
     val ecoGreen = Color(0xFF4CAF50)
 
+    // --- Filter logic: Only show products where sold is false ---
+    val activeListings = remember(sellerProducts) {
+        sellerProducts.filter { !it.sold }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                title = { Text("Seller Profile", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp) },
+                title = {
+                    Text(
+                        text = "Seller Profile",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 18.sp
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
@@ -93,34 +107,67 @@ fun SellerProfileScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Listings Title
-                    Row(modifier = Modifier.fillMaxWidth()) {
+                    // Listings Title with Count
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "Seller's Listings",
+                            text = "Active Listings",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontSize = 18.sp,
                             color = Color.Black
                         )
+                        Surface(
+                            color = ecoGreen.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "${activeListings.size} Items",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontSize = 12.sp,
+                                color = ecoGreen,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(thickness = 1.dp, color = Color.LightGray.copy(alpha = 0.5f))
                 }
             }
 
-            // --- LIST OF PRODUCTS ---
-            if (sellerProducts.isEmpty()) {
+            // --- LIST OF ACTIVE PRODUCTS ---
+            if (activeListings.isEmpty()) {
                 item {
-                    Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                        Text("This seller has no active listings.", color = Color.Gray)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 60.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingBag, // Changed from Inventory2
+                                contentDescription = null,
+                                tint = Color.LightGray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("This seller has no active listings.", color = Color.Gray)
+                        }
                     }
                 }
             } else {
-                items(sellerProducts) { product ->
+                items(activeListings) { product ->
                     // Reusing your ListingItemCard for consistency
                     ListingItemCard(
                         product = product,
                         ecoGreen = ecoGreen,
-                        onEdit = {}, // Empty since a viewer cannot edit a seller's product
-                        onProductClick = onProductClick,
-                        onDeleteSuccess = {} // Empty for public view
+                        // Passing empty lambdas because a viewer shouldn't edit/delete someone else's items
+                        onEdit = { /* No action */ },
+                        onProductClick = { onProductClick(product.id) },
+                        onDeleteSuccess = { /* No action */ }
                     )
                 }
             }

@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -30,9 +29,9 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.model.Product
 import com.secondhand.shop.utils.CloudinaryUploader
+import com.secondhand.shop.repository.ProductRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.secondhand.shop.repository.ProductRepository
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -59,19 +58,21 @@ fun AddProductScreen(
     var capturedImage by remember { mutableStateOf<Any?>(null) }
     var existingImageUrl by remember { mutableStateOf<String?>(null) }
 
+    // --- Sold Status State ---
+    var isSold by remember { mutableStateOf(false) }
+
     // --- UI States ---
     var isUploading by remember { mutableStateOf(false) }
     var isLoadingProduct by remember { mutableStateOf(isEditMode) }
     var showSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
-
-    // Scroll state for the body
     val scrollState = rememberScrollState()
 
     val conditions = listOf("Brand New", "Like New", "Lightly Used", "Well Used", "For Parts")
-    val categories = listOf("Electronics", "Furniture", "Fashion", "Home Decor", "Books", "Toys", "Others")
+    val categories = listOf("Electronics", "Furniture", "Fashion", "Home Decor", "Books", "Toys", "Other")
 
+    // Load Data if in Edit Mode
     LaunchedEffect(productId) {
         if (isEditMode && productId != null) {
             ProductRepository.getProductById(
@@ -84,10 +85,11 @@ fun AddProductScreen(
                         selectedCondition = it.condition
                         existingImageUrl = it.imageUrl
                         capturedImage = it.imageUrl
+                        isSold = it.sold // Load the status
                         if (categories.contains(it.category)) {
                             selectedCategory = it.category
                         } else {
-                            selectedCategory = "Others"
+                            selectedCategory = "Other"
                             customCategoryName = it.category
                         }
                     }
@@ -95,7 +97,7 @@ fun AddProductScreen(
                 },
                 onError = {
                     isLoadingProduct = false
-                    Toast.makeText(context, "Error loading product info", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Error loading product", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -122,7 +124,7 @@ fun AddProductScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = if (isEditMode) "Edit Product" else "Post New Item",
+                        text = if (isEditMode) "Edit Listing" else "Post New Item",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         color = white
@@ -135,31 +137,6 @@ fun AddProductScreen(
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = ecoGreen)
             )
-        },
-        bottomBar = {
-            NavigationBar(containerColor = ecoGreen) {
-                val items = listOf(
-                    Triple("Home", Icons.Default.Home, "home_content"),
-                    Triple("Saved", Icons.Default.Favorite, "favorites"),
-                    Triple("Sell", Icons.Default.AddCircle, "sell"),
-                    Triple("Chat", Icons.AutoMirrored.Filled.Chat, "chat"),
-                    Triple("Profile", Icons.Default.Person, "profile_content")
-                )
-                items.forEach { (label, icon, route) ->
-                    val isSelected = route == "sell"
-                    NavigationBarItem(
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label, fontSize = 10.sp, color = Color.White) },
-                        selected = isSelected,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = white,
-                            unselectedIconColor = white.copy(alpha = 0.7f),
-                            indicatorColor = darkEcoGreen
-                        ),
-                        onClick = { if (route != "sell") onBack() }
-                    )
-                }
-            }
         }
     ) { padding ->
         if (isLoadingProduct) {
@@ -167,16 +144,55 @@ fun AddProductScreen(
                 CircularProgressIndicator(color = ecoGreen)
             }
         } else {
-            // Main Scrollable Container
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding) // Respects Top/Bottom Bars
-                    .verticalScroll(scrollState) // Enables Scrolling
-                    .imePadding() // Moves content up when keyboard appears
+                    .padding(padding)
+                    .verticalScroll(scrollState)
+                    .imePadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+
+                // --- STATUS TOGGLE: Only visible when EDITING ---
+                if (isEditMode) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSold) Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, if (isSold) Color.Red.copy(0.3f) else ecoGreen.copy(0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isSold) "Status: SOLD" else "Status: ACTIVE",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSold) Color.Red else darkEcoGreen
+                                )
+                                Text(
+                                    text = if (isSold) "Hidden from search" else "Visible to buyers",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                            Switch(
+                                checked = isSold,
+                                onCheckedChange = { isSold = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedTrackColor = Color.Red,
+                                    uncheckedTrackColor = ecoGreen
+                                )
+                            )
+                        }
+                    }
+                }
+
                 // Image Picker
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Surface(
@@ -196,10 +212,9 @@ fun AddProductScreen(
                     }
                 }
 
-                // Title
+                // Inputs
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Product Title") }, modifier = Modifier.fillMaxWidth(), colors = customTextFieldColors, shape = RoundedCornerShape(12.dp))
 
-                // Category
                 var categoryExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = categoryExpanded, onExpandedChange = { categoryExpanded = !categoryExpanded }) {
                     OutlinedTextField(value = selectedCategory, onValueChange = {}, readOnly = true, label = { Text("Category") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) }, modifier = Modifier.menuAnchor().fillMaxWidth(), colors = customTextFieldColors, shape = RoundedCornerShape(12.dp))
@@ -212,7 +227,6 @@ fun AddProductScreen(
                     OutlinedTextField(value = customCategoryName, onValueChange = { customCategoryName = it }, label = { Text("Custom Category Name") }, modifier = Modifier.fillMaxWidth(), colors = customTextFieldColors, shape = RoundedCornerShape(12.dp))
                 }
 
-                // Price and Condition Row
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price ($)") }, modifier = Modifier.weight(1f), colors = customTextFieldColors, shape = RoundedCornerShape(12.dp))
 
@@ -225,15 +239,14 @@ fun AddProductScreen(
                     }
                 }
 
-                // Description
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth().height(150.dp), colors = customTextFieldColors, shape = RoundedCornerShape(12.dp))
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Submit Button
                 Button(
                     onClick = {
-                        if (title.isBlank() || price.isBlank() || capturedImage == null) {
+                        if (title.isBlank() || price.isBlank() || (capturedImage == null && existingImageUrl == null)) {
                             Toast.makeText(context, "Please complete all fields", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
@@ -260,6 +273,7 @@ fun AddProductScreen(
                                     condition = selectedCondition,
                                     imageUrl = finalImageUrl,
                                     sellerId = currentUser?.uid ?: "anonymous",
+                                    sold = isSold, // If adding new, isSold is false by default
                                     createdAt = System.currentTimeMillis()
                                 )
 
@@ -274,28 +288,27 @@ fun AddProductScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isUploading
                 ) {
                     if (isUploading) CircularProgressIndicator(color = white, modifier = Modifier.size(24.dp))
-                    else Text(if (isEditMode) "Edit Product" else "Post Item Now", fontWeight = FontWeight.Bold)
+                    else Text(if (isEditMode) "Update Product" else "Post Item Now", fontWeight = FontWeight.Bold)
                 }
 
-                // Extra spacer to ensure the button isn't hugged by the bottom bar
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 
-    // Modal Bottom Sheet remains the same...
+    // Modal Sheet for Image Selection
     if (showSheet) {
         ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
             Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp, start = 16.dp, end = 16.dp)) {
-                Text("Product Photo", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 16.dp))
+                Text("Select Image", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 16.dp))
                 ListItem(
-                    headlineContent = { Text("Take New Photo") },
+                    headlineContent = { Text("Take Photo") },
                     leadingContent = { Icon(Icons.Default.PhotoCamera, null, tint = ecoGreen) },
                     modifier = Modifier.clickable {
                         if (cameraPermissionState.status.isGranted) cameraLauncher.launch(null)
@@ -303,7 +316,7 @@ fun AddProductScreen(
                     }
                 )
                 ListItem(
-                    headlineContent = { Text("Choose from Gallery") },
+                    headlineContent = { Text("Gallery") },
                     leadingContent = { Icon(Icons.Default.PhotoLibrary, null, tint = ecoGreen) },
                     modifier = Modifier.clickable { galleryLauncher.launch("image/*") }
                 )

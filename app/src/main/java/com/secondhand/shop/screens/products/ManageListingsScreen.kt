@@ -38,7 +38,7 @@ import com.secondhand.shop.repository.ProductRepository
 fun ManageListingsScreen(
     onBack: () -> Unit,
     onEditProduct: (String) -> Unit,
-    onProductClick: (String) -> Unit
+    onProductClick: (String) -> Unit,
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val context = LocalContext.current

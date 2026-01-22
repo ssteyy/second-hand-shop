@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.ui)
+    implementation(libs.androidx.foundation)
 
     // Debug only
     debugImplementation(libs.androidx.compose.ui.tooling)

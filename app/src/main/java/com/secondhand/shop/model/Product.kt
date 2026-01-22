@@ -10,6 +10,6 @@ data class Product(
     val imageUrl: String = "",
     val sellerId: String = "",
     val sold: Boolean = false,   // <--- match Firestore field
-    val createdAt: Long = 0L
+    val createdAt: Long = System.currentTimeMillis(),
 )
 

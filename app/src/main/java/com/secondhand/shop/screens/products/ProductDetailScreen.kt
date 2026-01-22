@@ -18,11 +18,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.model.Product
 import com.secondhand.shop.repository.ProductRepository
 
@@ -32,7 +31,8 @@ fun ProductDetailScreen(
     productId: String, // Receive the ID from the navigation
     onBack: () -> Unit,
     onChatClicked: (String) -> Unit,
-    onViewProfile: (String) -> Unit
+    onViewProfile: (String) -> Unit,
+    onManageListings: () -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val context = LocalContext.current
@@ -41,6 +41,7 @@ fun ProductDetailScreen(
     // --- State for Product Data ---
     var product by remember { mutableStateOf<Product?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid }
 
     // --- Fetch Product Data ---
     LaunchedEffect(productId) {
@@ -160,12 +161,34 @@ fun ProductDetailScreen(
 
                 // --- 2. Info Section ---
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "$${currentProduct.price}",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = ecoGreen
-                    )
+                    // Row for Price and Category Badge
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$${currentProduct.price}",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = ecoGreen
+                        )
+
+                        // --- Category Badge ---
+                        Surface(
+                            color = ecoGreen.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, ecoGreen.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                text = currentProduct.category, // Displays: Electronics, Furniture, etc.
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ecoGreen
+                            )
+                        }
+                    }
 
                     Text(
                         text = currentProduct.title,
@@ -179,7 +202,6 @@ fun ProductDetailScreen(
                         Text(text = "Phnom Penh, Cambodia", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.width(12.dp))
                         Icon(Icons.Default.AccessTime, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                        // Note: You can format the timestamp here
                         Text(text = "Just now", color = Color.Gray, fontSize = 14.sp)
                     }
 
@@ -212,14 +234,23 @@ fun ProductDetailScreen(
 
                         OutlinedButton(
                             onClick = {
-                                // Calls the lambda passed from MainScreen with the actual sellerId
-                                onViewProfile(currentProduct.sellerId)
+                                if (currentProduct.sellerId == currentUserId) {
+                                    // User owns this product
+                                    onManageListings()
+                                } else {
+                                    // User is a buyer viewing someone else
+                                    onViewProfile(currentProduct.sellerId)
+                                }
                             },
                             shape = RoundedCornerShape(8.dp),
                             border = BorderStroke(1.dp, ecoGreen),
                             contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Text("View Profile", fontSize = 12.sp, color = ecoGreen)
+                            Text(
+                                text = if (currentProduct.sellerId == currentUserId) "Manage My Listing" else "View Profile",
+                                fontSize = 12.sp,
+                                color = ecoGreen
+                            )
                         }
                     }
 

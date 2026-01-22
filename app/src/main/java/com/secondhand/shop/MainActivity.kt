@@ -89,19 +89,21 @@ class MainActivity : ComponentActivity() {
 
                         // 5. Product Details: Global route to allow viewing from Home or My Listings
                         // Inside your NavHost in MainScreen.kt
-                        composable(
-                            route = "product_detail/{productId}",
-                            arguments = listOf(navArgument("productId") { type = NavType.StringType })
-                        ) { backStackEntry ->
+                        composable("product_detail/{productId}") { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId") ?: ""
-
                             ProductDetailScreen(
                                 productId = productId,
                                 onBack = { rootNavController.popBackStack() },
-                                onChatClicked = { /* chat logic */ },
+                                onChatClicked = { sellerId ->
+                                    rootNavController.navigate("chat/$sellerId")
+                                },
                                 onViewProfile = { sellerId ->
-                                    // 3. Perform the actual navigation here using the CORRECT controller
-                                    rootNavController.navigate("seller_profile/$sellerId/Seller Name/seller@email.com")
+                                    // Navigate to the public seller profile
+                                    rootNavController.navigate("seller_profile/$sellerId")
+                                },
+                                onManageListings = {
+                                    // Navigate to the user's own management screen
+                                    rootNavController.navigate("manage_listings")
                                 }
                             )
                         }

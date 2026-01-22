@@ -143,7 +143,6 @@ fun MainScreen(
             // Home Screen
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
-                    onNavigateToSearch = { internalNavController.navigate("search_filter") },
                     onProductClick = { productId: String ->
                         internalNavController.navigate("product_detail/$productId")
                     }
@@ -179,20 +178,21 @@ fun MainScreen(
             }
 
             // Updated Product Detail Screen Route
-            composable(
-                route = "product_detail/{productId}",
-                arguments = listOf(navArgument("productId") { type = NavType.StringType })
-            ) { backStackEntry ->
+            composable("product_detail/{productId}") { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId") ?: ""
-
                 ProductDetailScreen(
                     productId = productId,
                     onBack = { internalNavController.popBackStack() },
+                    onChatClicked = { sellerId ->
+                        internalNavController.navigate("chat/$sellerId")
+                    },
                     onViewProfile = { sellerId ->
+                        // Navigate to the public seller profile
                         internalNavController.navigate("seller_profile/$sellerId")
                     },
-                    onChatClicked = { sellerId ->
-                        internalNavController.navigate("chat_detail/$sellerId")
+                    onManageListings = {
+                        // Navigate to the user's own management screen
+                        internalNavController.navigate("manage_listings")
                     }
                 )
             }
