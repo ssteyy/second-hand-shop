@@ -1,5 +1,6 @@
 package com.secondhand.shop.screens.products
 
+import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -16,39 +17,48 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// Data Class for Product items
-data class FavoriteProduct(
-    val id: String,
-    val name: String,
-    val price: String,
-    val condition: String
-)
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.google.firebase.auth.FirebaseAuth
+import com.secondhand.shop.model.Product
+import com.secondhand.shop.repository.ProductRepository
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
-    onBack: () -> Unit, // 1. Added back navigation callback
+    onBack: () -> Unit,
     onProductClick: (String) -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
-    val white = Color.White
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val context = LocalContext.current
 
-    // 1. Manage the list of favorites in a state
-    val favoriteItems = remember {
-        mutableStateListOf(
-            FavoriteProduct("1", "Vintage Denim Jacket", "$45.00", "Used"),
-            FavoriteProduct("2", "Modern Coffee Table", "$120.00", "New"),
-            FavoriteProduct("3", "Wireless Headphones", "$85.00", "Like New"),
-            FavoriteProduct("4", "Designer Backpack", "$210.00", "Used"),
-            FavoriteProduct("5", "Potted Plant", "$30.00", "Fresh"),
-            FavoriteProduct("6", "Retro Camera", "$99.00", "Used")
-        )
+    var favoriteProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Fetch favorite products dynamically from Firestore
+    LaunchedEffect(userId) {
+        if (userId != null) {
+            ProductRepository.fetchAllAvailableProducts(
+                onSuccess = { products ->
+                    // Filter only the products that have this user in favorites
+                    favoriteProducts = products.filter { it.favorites.contains(userId) }
+                    isLoading = false
+                },
+                onError = {
+                    Toast.makeText(context, "Failed to load favorites", Toast.LENGTH_SHORT).show()
+                    isLoading = false
+                }
+            )
+        } else {
+            favoriteProducts = emptyList()
+            isLoading = false
+        }
     }
 
     Scaffold(
@@ -60,8 +70,7 @@ fun FavoritesScreen(
                         text = "My Favorites",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = white,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
@@ -69,18 +78,17 @@ fun FavoritesScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = white
+                            tint = Color.White
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors( // Match the colors
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = ecoGreen
                 )
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Sub-header: Item Count
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -88,19 +96,22 @@ fun FavoritesScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${favoriteItems.size} Items saved",
+                    text = "${favoriteProducts.size} Items saved",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
             }
 
-            if (favoriteItems.isEmpty()) {
-                // Empty State
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = ecoGreen)
+                }
+            } else if (favoriteProducts.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            imageVector = Icons.Default.Favorite,
+                            imageVector = Icons.Filled.Favorite,
                             contentDescription = null,
                             tint = Color.LightGray,
                             modifier = Modifier.size(64.dp)
@@ -110,7 +121,6 @@ fun FavoritesScreen(
                     }
                 }
             } else {
-                // Grid Content
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -118,13 +128,29 @@ fun FavoritesScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Inside your LazyVerticalGrid
-                    items(favoriteItems, key = { it.id }) { product ->
+                    items(favoriteProducts, key = { it.id }) { product ->
                         FavoriteProductCard(
                             product = product,
                             ecoGreen = ecoGreen,
-                            onCardClick = { onProductClick(product.id) }, // This sends the ID back to MainScreen
-                            onRemoveClick = { favoriteItems.remove(product) }
+                            onCardClick = { onProductClick(product.id) },
+                            onRemoveClick = {
+                                ProductRepository.toggleFavorite(product,
+                                    onSuccess = {
+                                        favoriteProducts = favoriteProducts.filter { it.id != product.id }
+                                        Toast.makeText(
+                                            context,
+                                            "Removed from favorites",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    onError = { e ->
+                                        Toast.makeText(
+                                            context,
+                                            "Error: ${e.message}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    })
+                            }
                         )
                     }
                 }
@@ -135,7 +161,7 @@ fun FavoritesScreen(
 
 @Composable
 fun FavoriteProductCard(
-    product: FavoriteProduct,
+    product: Product,
     ecoGreen: Color,
     onCardClick: () -> Unit,
     onRemoveClick: () -> Unit
@@ -151,17 +177,17 @@ fun FavoriteProductCard(
     ) {
         Column {
             Box(modifier = Modifier.height(160.dp)) {
-                // Product Image Placeholder
-                Image(
-                    painter = painterResource(id = android.R.drawable.ic_menu_gallery),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFFF9F9F9)),
-                    contentScale = ContentScale.Fit
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(product.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = product.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
 
-                // "Remove" Heart Overlay
+                // "Remove" favorite button
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -175,7 +201,7 @@ fun FavoriteProductCard(
                     ) {
                         IconButton(onClick = onRemoveClick) {
                             Icon(
-                                imageVector = Icons.Default.Favorite,
+                                imageVector = Icons.Filled.Favorite,
                                 contentDescription = "Unfavorite",
                                 tint = Color(0xFFE91E63),
                                 modifier = Modifier.size(18.dp)
@@ -202,7 +228,7 @@ fun FavoriteProductCard(
 
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = product.name,
+                    text = product.title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -212,7 +238,7 @@ fun FavoriteProductCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = product.price,
+                    text = "$${product.price}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = ecoGreen
@@ -220,7 +246,6 @@ fun FavoriteProductCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Clicking this button also navigates to detail
                 Button(
                     onClick = onCardClick,
                     modifier = Modifier.fillMaxWidth().height(36.dp),
