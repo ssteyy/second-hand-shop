@@ -70,7 +70,7 @@ fun AddProductScreen(
     val scrollState = rememberScrollState()
 
     val conditions = listOf("Brand New", "Like New", "Lightly Used", "Well Used", "For Parts")
-    val categories = listOf("Electronics", "Furniture", "Fashion", "Home Decor", "Books", "Toys", "Other")
+    val categories = listOf("Electronics", "Furniture", "Fashion", "Home Decor", "Books", "Toys", "Others")
 
     LaunchedEffect(productId) {
         if (isEditMode && productId != null) {
@@ -87,7 +87,7 @@ fun AddProductScreen(
                         if (categories.contains(it.category)) {
                             selectedCategory = it.category
                         } else {
-                            selectedCategory = "Other"
+                            selectedCategory = "Others"
                             customCategoryName = it.category
                         }
                     }
@@ -149,7 +149,7 @@ fun AddProductScreen(
                     val isSelected = route == "sell"
                     NavigationBarItem(
                         icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label, fontSize = 10.sp) },
+                        label = { Text(label, fontSize = 10.sp, color = Color.White) },
                         selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = white,
