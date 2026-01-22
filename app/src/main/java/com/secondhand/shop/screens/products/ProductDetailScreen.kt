@@ -8,7 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,8 @@ import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.secondhand.shop.model.Product
 import com.secondhand.shop.repository.ProductRepository
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.AccessTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,12 +39,12 @@ fun ProductDetailScreen(
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val context = LocalContext.current
-    var isFavorite by remember { mutableStateOf(false) }
+    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid }
 
     // --- State for Product Data ---
     var product by remember { mutableStateOf<Product?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid }
+    var isFavorite by remember { mutableStateOf(false) }
 
     // --- Fetch Product Data ---
     LaunchedEffect(productId) {
@@ -49,6 +52,8 @@ fun ProductDetailScreen(
             productId = productId,
             onSuccess = { fetchedProduct ->
                 product = fetchedProduct
+                // Initialize favorite state
+                isFavorite = currentUserId != null && fetchedProduct?.favorites?.contains(currentUserId) == true
                 isLoading = false
             },
             onError = {
@@ -90,14 +95,41 @@ fun ProductDetailScreen(
                             .navigationBarsPadding(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // --- FAVORITE BUTTON ---
                         OutlinedButton(
-                            onClick = { isFavorite = !isFavorite },
+                            onClick = {
+                                val currentProduct = product ?: return@OutlinedButton
+                                if (currentUserId == null) return@OutlinedButton
+
+                                // Toggle favorite in Firestore
+                                ProductRepository.toggleFavorite(
+                                    currentProduct,
+                                    onSuccess = {
+                                        isFavorite = !isFavorite
+                                        Toast.makeText(
+                                            context,
+                                            if (isFavorite) "Added to favorites" else "Removed from favorites",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        // Update local product state
+                                        product = currentProduct.copy(
+                                            favorites = if (isFavorite)
+                                                currentProduct.favorites + currentUserId
+                                            else
+                                                currentProduct.favorites - currentUserId
+                                        )
+                                    },
+                                    onError = { e ->
+                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            },
                             modifier = Modifier.height(54.dp).weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, Color.LightGray)
                         ) {
                             Icon(
-                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = null,
                                 tint = if (isFavorite) Color.Red else Color.Black
                             )
@@ -105,8 +137,7 @@ fun ProductDetailScreen(
 
                         Button(
                             onClick = {
-                                // 3. Pass the sellerId from the current product
-                                onChatClicked(product!!.sellerId)
+                                product?.let { onChatClicked(it.sellerId) }
                             },
                             modifier = Modifier.height(54.dp).weight(2.5f),
                             colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
@@ -134,7 +165,7 @@ fun ProductDetailScreen(
                     .background(Color.White)
                     .verticalScroll(rememberScrollState())
             ) {
-                // --- 1. Dynamic Hero Image ---
+                // --- Product Image ---
                 Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
                     AsyncImage(
                         model = currentProduct.imageUrl,
@@ -159,9 +190,9 @@ fun ProductDetailScreen(
                     }
                 }
 
-                // --- 2. Info Section ---
+                // --- Info Section ---
                 Column(modifier = Modifier.padding(20.dp)) {
-                    // Row for Price and Category Badge
+                    // Price & Category Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -174,14 +205,13 @@ fun ProductDetailScreen(
                             color = ecoGreen
                         )
 
-                        // --- Category Badge ---
                         Surface(
                             color = ecoGreen.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, ecoGreen.copy(alpha = 0.3f))
                         ) {
                             Text(
-                                text = currentProduct.category, // Displays: Electronics, Furniture, etc.
+                                text = currentProduct.category,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -205,13 +235,13 @@ fun ProductDetailScreen(
                         Text(text = "Just now", color = Color.Gray, fontSize = 14.sp)
                     }
 
-                    HorizontalDivider(
+                    Divider(
                         modifier = Modifier.padding(vertical = 24.dp),
                         thickness = 1.dp,
                         color = Color(0xFFF0F0F0)
                     )
 
-                    // --- 3. Seller Card ---
+                    // --- Seller Card ---
                     Text(text = "Seller Information", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -230,15 +260,12 @@ fun ProductDetailScreen(
                             Text(text = "Seller ID: ${currentProduct.sellerId.take(8)}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(text = "Verified Seller • 5.0 ★", color = ecoGreen, fontSize = 12.sp)
                         }
-                        // Inside ProductDetailScreen.kt -> Seller Card Row
 
                         OutlinedButton(
                             onClick = {
                                 if (currentProduct.sellerId == currentUserId) {
-                                    // User owns this product
                                     onManageListings()
                                 } else {
-                                    // User is a buyer viewing someone else
                                     onViewProfile(currentProduct.sellerId)
                                 }
                             },
@@ -256,7 +283,7 @@ fun ProductDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- 4. Description Section ---
+                    // --- Description ---
                     Text(text = "Description", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text(
                         text = currentProduct.description,
@@ -269,7 +296,6 @@ fun ProductDetailScreen(
                 }
             }
         } else {
-            // Error State
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Product not found.")
             }
