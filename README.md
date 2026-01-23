@@ -1,4 +1,4 @@
-# 🧭 Defend Scope – Second-Hand Product Selling App
+# 🧭 Defend Scope – Second-Hand Shop App
 
 ## 📱 Project Overview
 This project is a **mobile application** that allows users to **buy and sell second-hand products** easily.  
