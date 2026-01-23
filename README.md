@@ -38,16 +38,13 @@ This app helps solve that problem by providing a **simple and safe platform** wh
 ### 🧍‍♀️ User Side (Mobile App)
 - Register, Login, Logout  
 - View and search products  
-- Filter by category, price, or location  
+- Filter by category, product name  
 - Post new products for sale  
 - Edit or delete own listings  
 - View product details  
 - Add to favorites/wishlist  
 - Chat with sellers  
-- Rate and review sellers  
 - Edit personal profile  
-
-### 🧺 Seller Side (Same user acting as seller)
 - Upload product details and images  
 - Manage active/sold listings  
 - Communicate with interested buyers  
@@ -59,14 +56,12 @@ This app helps solve that problem by providing a **simple and safe platform** wh
 ## 🚀 Future Plan
 - Add a **Web Admin Dashboard** to manage users and listings (future version).  
 - Add **online payment integration** for secure in-app transactions.  
-- Add **delivery and order tracking** system.  
 - Add **ratings and reviews** for better user trust.  
-- Use **AI-based product recommendations** to show related products to users.  
 - Support **multi-language** interface for wider reach.  
 
 ---
 
 ## ✅ Summary
-The **Second-Hand Product Selling App** provides a modern, simple, and eco-friendly way for people to buy and sell used products.  
+The **Second-Hand Shop App** provides a modern, simple, and eco-friendly way for people to buy and sell used products.  
 It connects users in one community marketplace, promotes reusing items, and helps everyone save money.  
 Future improvements will make the system more powerful with online payments, delivery tracking, and web admin management.
