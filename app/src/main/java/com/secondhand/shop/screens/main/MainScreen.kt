@@ -30,6 +30,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.secondhand.shop.R
+import com.secondhand.shop.model.Chat
 import com.secondhand.shop.model.Product
 import com.secondhand.shop.screens.chat.ChatDetailScreen
 import com.secondhand.shop.screens.chat.ChatListScreen
@@ -64,6 +65,24 @@ fun MainScreen(
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // --- Notification Badge Logic ---
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    var hasUnreadMessages by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isEmpty()) return@LaunchedEffect
+        val db = Firebase.firestore
+        // Listen to all chats where the user is a member
+        db.collection("chats")
+            .whereArrayContains("members", currentUserId)
+            .addSnapshotListener { snapshot, _ ->
+                val chats = snapshot?.toObjects(Chat::class.java) ?: emptyList()
+                // Check if any chat has unread messages for this specific user
+                hasUnreadMessages = chats.any { it.unreadCountForUser(currentUserId) > 0 }
+            }
+    }
+    // --------------------------------
+
     val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "favorites", "notifications")
     val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
 
@@ -88,7 +107,19 @@ fun MainScreen(
                     },
                     actions = {
                         IconButton(onClick = { internalNavController.navigate("notifications") }) {
-                            Icon(Icons.Default.Notifications, "Notifications", tint = white)
+                            // ✅ Red Dot Badge Implementation
+                            BadgedBox(
+                                badge = {
+                                    if (hasUnreadMessages) {
+                                        Badge(
+                                            containerColor = Color.Red,
+                                            modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
+                                        )
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Notifications, "Notifications", tint = white)
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = ecoGreen)
@@ -105,7 +136,16 @@ fun MainScreen(
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
                         NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            icon = {
+                                // Optional: You can also add a badge to the Chat icon in the bottom bar
+                                if (item == BottomNavItem.Chat) {
+                                    BadgedBox(badge = { if (hasUnreadMessages) Badge(containerColor = Color.Red) }) {
+                                        Icon(item.icon, contentDescription = item.label)
+                                    }
+                                } else {
+                                    Icon(item.icon, contentDescription = item.label)
+                                }
+                            },
                             label = { Text(item.label, fontSize = 10.sp, color = Color.White) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
@@ -218,7 +258,6 @@ fun MainScreen(
                         CircularProgressIndicator(color = ecoGreen)
                     }
                 } else {
-                    // ✅ FIXED: Now passing the required onChatClick parameter
                     SellerProfileScreen(
                         sellerName = name,
                         sellerEmail = email,
@@ -231,7 +270,6 @@ fun MainScreen(
                         onChatClick = { targetSellerId, targetSellerName ->
                             val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                             if (currentUserId.isNotEmpty()) {
-                                // Create a unique Chat ID based on alphabetical order of UIDs
                                 val chatId = if (currentUserId < targetSellerId)
                                     "${currentUserId}_$targetSellerId"
                                 else
@@ -263,7 +301,17 @@ fun MainScreen(
             }
 
             composable("search_filter") { SearchFilterScreen(onBack = { internalNavController.popBackStack() }) }
-            composable("notifications") { NotificationsScreen(onBack = { internalNavController.popBackStack() }) }
+
+            composable("notifications") {
+                NotificationsScreen(
+                    onBack = { internalNavController.popBackStack() },
+                    onChatClick = { chatId ->
+                        val encodedName = URLEncoder.encode("Chat", "UTF-8")
+                        internalNavController.navigate("chat_detail/$chatId/$encodedName")
+                    }
+                )
+            }
+
             composable("edit_profile") { EditProfileScreen(profileViewModel = profileViewModel, onBack = { internalNavController.popBackStack() }) }
             composable("settings") {
                 SettingsScreen(

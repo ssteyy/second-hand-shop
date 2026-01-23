@@ -1,6 +1,7 @@
 package com.secondhand.shop.screens.notifications
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,10 @@ import com.secondhand.shop.model.Notification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(onBack: () -> Unit) {
+fun NotificationsScreen(
+    onBack: () -> Unit,
+    onChatClick: (String) -> Unit // Added explicitly here
+) {
     val ecoGreen = Color(0xFF4CAF50)
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val db = FirebaseFirestore.getInstance()
@@ -40,7 +44,6 @@ fun NotificationsScreen(onBack: () -> Unit) {
     LaunchedEffect(currentUserId) {
         if (currentUserId.isEmpty()) return@LaunchedEffect
 
-        // 1. Listen for Chats that have unread messages
         db.collection("chats")
             .whereArrayContains("members", currentUserId)
             .addSnapshotListener { snapshot, _ ->
@@ -49,7 +52,6 @@ fun NotificationsScreen(onBack: () -> Unit) {
                 } ?: emptyList()
             }
 
-        // 2. Listen for System Updates (Likes, etc.)
         db.collection("notifications")
             .whereEqualTo("userId", currentUserId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -79,12 +81,14 @@ fun NotificationsScreen(onBack: () -> Unit) {
                 Text("No new updates", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-
                     if (unreadChats.isNotEmpty()) {
                         item { SectionHeader("New Messages") }
                         items(unreadChats) { chat ->
-                            // ✅ Uses a special item that fetches "hello" from sub-collection
-                            ChatNotificationItem(chat, currentUserId)
+                            ChatNotificationItem(
+                                chat = chat,
+                                currentUserId = currentUserId,
+                                onClick = { onChatClick(chat.id) } // Now this parameter exists!
+                            )
                         }
                     }
 
@@ -106,43 +110,64 @@ fun NotificationsScreen(onBack: () -> Unit) {
     }
 }
 
-/**
- * ✅ This specialized component fetches the LATEST message text
- * (e.g., "hello") directly from the sub-collection.
- */
 @Composable
-fun ChatNotificationItem(chat: Chat, currentUserId: String) {
+fun ChatNotificationItem(
+    chat: Chat,
+    currentUserId: String,
+    onClick: () -> Unit
+) {
     var displayBody by remember { mutableStateOf(chat.lastMessage ?: "New Message") }
+    var senderName by remember { mutableStateOf("Loading...") }
 
     LaunchedEffect(chat.id) {
-        FirebaseFirestore.getInstance()
-            .collection("chats").document(chat.id)
+        val db = FirebaseFirestore.getInstance()
+        db.collection("chats").document(chat.id)
             .collection("messages")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(1)
             .addSnapshotListener { snapshot, _ ->
-                val latestText = snapshot?.documents?.firstOrNull()?.getString("text")
-                if (latestText != null) displayBody = latestText
+                val messageDoc = snapshot?.documents?.firstOrNull()
+                if (messageDoc != null) {
+                    displayBody = messageDoc.getString("text") ?: ""
+                    val senderId = messageDoc.getString("senderId") ?: ""
+
+                    if (senderId.isNotEmpty()) {
+                        db.collection("users").document(senderId).get()
+                            .addOnSuccessListener { userDoc ->
+                                // Using fullName from your User model
+                                senderName = userDoc.getString("fullName") ?: "Unknown User"
+                            }
+                    }
+                }
             }
     }
 
     NotificationItem(
-        title = "From ${chat.getOtherUserName(currentUserId)}",
+        title = senderName,
         body = displayBody,
         time = chat.lastMessageTimeFormatted(),
         icon = Icons.AutoMirrored.Filled.Chat,
-        iconColor = Color(0xFF4CAF50)
+        iconColor = Color(0xFF4CAF50),
+        onClick = onClick
     )
 }
 
 @Composable
-fun SectionHeader(text: String) {
-    Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Gray, modifier = Modifier.padding(16.dp))
-}
-
-@Composable
-fun NotificationItem(title: String, body: String, time: String, icon: ImageVector, iconColor: Color) {
-    Surface(modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp), color = Color.White) {
+fun NotificationItem(
+    title: String,
+    body: String,
+    time: String,
+    icon: ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit = {}
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 1.dp)
+            .clickable { onClick() },
+        color = Color.White
+    ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
             Surface(shape = CircleShape, color = iconColor.copy(alpha = 0.1f), modifier = Modifier.size(45.dp)) {
                 Box(contentAlignment = Alignment.Center) {
@@ -159,6 +184,11 @@ fun NotificationItem(title: String, body: String, time: String, icon: ImageVecto
             }
         }
     }
+}
+
+@Composable
+fun SectionHeader(text: String) {
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Gray, modifier = Modifier.padding(16.dp))
 }
 
 fun getIconForType(type: String): ImageVector = when (type) {
