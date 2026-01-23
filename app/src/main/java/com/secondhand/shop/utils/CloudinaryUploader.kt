@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,55 +15,77 @@ import java.io.ByteArrayOutputStream
 
 object CloudinaryUploader {
 
-    // These values match your screenshots exactly
+    // 🔐 Cloudinary config (Unsigned upload)
     private const val CLOUD_NAME = "ddxtjfv6r"
     private const val UPLOAD_PRESET = "secondhand_shop"
 
+    private val client = OkHttpClient()
+
+    /**
+     * Upload Bitmap (Camera)
+     */
     suspend fun uploadBitmap(bitmap: Bitmap): String? = withContext(Dispatchers.IO) {
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
         uploadToCloudinary(stream.toByteArray())
     }
 
+    /**
+     * Upload Image from Gallery (Uri)
+     */
     suspend fun uploadFile(context: Context, uri: Uri): String? = withContext(Dispatchers.IO) {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+            input.readBytes()
+        }
         bytes?.let { uploadToCloudinary(it) }
     }
 
-    private suspend fun uploadToCloudinary(bytes: ByteArray): String? = withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-
-        // 1. Create the request body
-        val requestBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart(
-                "file",
-                "upload.jpg",
-                bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
-            )
-            .addFormDataPart("upload_preset", UPLOAD_PRESET)
-            .build()
-
-        // 2. Build the request pointing to Cloudinary's API
-        val request = Request.Builder()
-            .url("https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload")
-            .post(requestBody)
-            .build()
-
-        try {
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val bodyString = response.body?.string() ?: ""
-                val jsonResponse = JSONObject(bodyString)
-
-                // This captures the real HTTPS link from Cloudinary's response
-                jsonResponse.getString("secure_url")
-            } else {
-                null
+    suspend fun uploadProfileImage(context: Context, bitmap: Bitmap?, uri: Uri?): String? {
+        return when {
+            bitmap != null -> {
+                CloudinaryUploader.uploadBitmap(bitmap)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+            uri != null -> {
+                CloudinaryUploader.uploadFile(context, uri)
+            }
+            else -> null
         }
     }
+
+    /**
+     * Core upload logic
+     */
+    private suspend fun uploadToCloudinary(bytes: ByteArray): String? =
+        withContext(Dispatchers.IO) {
+
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "file",
+                    "profile.jpg",
+                    bytes.toRequestBody("image/jpeg".toMediaType())
+                )
+                .addFormDataPart("upload_preset", UPLOAD_PRESET)
+                .build()
+
+            val request = Request.Builder()
+                .url("https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload")
+                .post(requestBody)
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+
+                    val body = response.body?.string() ?: return@withContext null
+                    val json = JSONObject(body)
+
+                    // ✅ Always use secure_url
+                    json.getString("secure_url")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
 }

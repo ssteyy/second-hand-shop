@@ -11,5 +11,6 @@ data class Product(
     val sellerId: String = "",
     val sold: Boolean = false,   // <--- match Firestore field
     val createdAt: Long = System.currentTimeMillis(),
+    val favorites: List<String> = emptyList()
 )
 

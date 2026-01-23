@@ -1,5 +1,6 @@
 package com.secondhand.shop.screens.profile
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,12 +26,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +45,7 @@ fun EditProfileScreen(
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // --- Fetch current user data from ViewModel ---
     val user by profileViewModel.user.collectAsState()
@@ -50,6 +55,18 @@ fun EditProfileScreen(
     var email by remember { mutableStateOf(user?.email ?: "") }
     var phone by remember { mutableStateOf(user?.phone ?: "") }
     var bio by remember { mutableStateOf(user?.bio ?: "") }
+
+    // ✅ Add this line to fix the "Unresolved reference" error
+    var isSaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(user) {
+        user?.let {
+            name = it.fullName ?: ""
+            email = it.email ?: ""
+            phone = it.phone ?: ""
+            bio = it.bio ?: ""
+        }
+    }
 
     // Image States
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -102,32 +119,55 @@ fun EditProfileScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = {
-                        // --- Save to Firestore ---
-                        val db = Firebase.firestore
-                        val uid = user?.uid ?: return@TextButton
-                        val updatedUser = hashMapOf(
-                            "fullName" to name,
-                            "email" to email,
-                            "phone" to phone,
-                            "bio" to bio
-                        )
-
-                        scope.launch {
-                            db.collection("users").document(uid)
-                                .update(updatedUser as Map<String, Any>)
-                                .addOnSuccessListener {
-                                    profileViewModel.refreshUser() // refresh live data
-                                    onBack()
-                                }
-                        }
-                    }) {
-                        Text(
-                            text = "Save",
+                    // Show a loader if saving, otherwise show the text button
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp).padding(end = 16.dp),
                             color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            strokeWidth = 2.dp
                         )
+                    } else {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    isSaving = true
+                                    val db = Firebase.firestore
+                                    val uid = user?.uid ?: return@launch
+
+                                    // 1. Actually upload the image using your Cloudinary utility
+                                    val uploadedUrl = uploadProfileImage(context, capturedBitmap, selectedImageUri)
+
+                                    // 2. Determine which URL to keep
+                                    val finalImageUrl = uploadedUrl ?: user?.profileImage ?: ""
+
+                                    val updatedUser = mapOf(
+                                        "fullName" to name,
+                                        "email" to email,
+                                        "phone" to phone,
+                                        "bio" to bio,
+                                        "profileImage" to finalImageUrl
+                                    )
+
+                                    db.collection("users")
+                                        .document(uid)
+                                        .update(updatedUser)
+                                        .addOnSuccessListener {
+                                            isSaving = false
+                                            onBack()
+                                        }
+                                        .addOnFailureListener { e ->
+                                            isSaving = false
+                                        }
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = "Save",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -163,6 +203,12 @@ fun EditProfileScreen(
                         )
                         selectedImageUri != null -> AsyncImage(
                             model = selectedImageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        !user?.profileImage.isNullOrEmpty() -> AsyncImage(
+                            model = user!!.profileImage,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -270,7 +316,7 @@ fun EditProfileScreen(
                     leadingContent = { Icon(Icons.Default.CameraAlt, null, tint = ecoGreen) },
                     modifier = Modifier.clickable {
                         showSheet = false
-                        cameraLauncher.launch(null) // ✅ Pass null for TakePicturePreview
+                        cameraLauncher.launch(null)
                     }
                 )
 
@@ -312,3 +358,16 @@ fun editFieldColors(ecoGreen: Color) = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = Color(0xFFFAFAFA),
     focusedContainerColor = Color.White
 )
+
+// --- Updated Image Upload Helper ---
+suspend fun uploadProfileImage(context: Context, bitmap: Bitmap?, uri: Uri?): String? {
+    return when {
+        bitmap != null -> {
+            com.secondhand.shop.utils.CloudinaryUploader.uploadBitmap(bitmap)
+        }
+        uri != null -> {
+            com.secondhand.shop.utils.CloudinaryUploader.uploadFile(context, uri)
+        }
+        else -> null
+    }
+}
