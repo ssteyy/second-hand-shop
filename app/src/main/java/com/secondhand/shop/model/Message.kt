@@ -1,0 +1,14 @@
+package com.secondhand.shop.model
+
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+
+data class Message(
+    @DocumentId
+    val id: String = "",
+    val senderId: String = "",
+    val text: String = "",
+    val timestamp: Timestamp? = null
+) {
+    constructor() : this("", "", "", null)
+}

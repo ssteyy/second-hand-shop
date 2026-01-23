@@ -17,8 +17,10 @@ import com.secondhand.shop.screens.auth.RegisterScreen
 import com.secondhand.shop.screens.main.MainScreen
 import com.secondhand.shop.screens.products.AddProductScreen
 import com.secondhand.shop.screens.products.ProductDetailScreen
+import com.secondhand.shop.screens.chat.ChatDetailScreen
 import com.secondhand.shop.screens.splash.SplashScreen
 import com.secondhand.shop.screens.profile.ProfileViewModel
+import java.net.URLDecoder
 
 class MainActivity : ComponentActivity() {
 
@@ -32,13 +34,11 @@ class MainActivity : ComponentActivity() {
                     val rootNavController = rememberNavController()
                     val profileViewModel: ProfileViewModel = viewModel()
 
-                    // The Root NavHost manages the entire app's lifecycle
                     NavHost(
                         navController = rootNavController,
                         startDestination = "splash"
                     ) {
-
-                        // 1. Splash Screen: Decides if we go to Login or Home
+                        // 1. Splash Screen
                         composable("splash") {
                             SplashScreen(
                                 onNavigateToLogin = {
@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 2. Auth Flow: Login
+                        // 2. Login Screen
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = {
@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 3. Auth Flow: Register
+                        // 3. Register Screen
                         composable("register") {
                             RegisterScreen(
                                 onNavigateBack = { rootNavController.popBackStack() },
@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 4. Main App: Holds the Bottom Navigation and Tabs
+                        // 4. Main App Screen
                         composable("main") {
                             MainScreen(
                                 rootNavController = rootNavController,
@@ -87,41 +87,65 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 5. Product Details: Global route to allow viewing from Home or My Listings
-                        // Inside your NavHost in MainScreen.kt
-                        composable("product_detail/{productId}") { backStackEntry ->
+                        // 5. Product Detail
+                        composable(
+                            route = "product_detail/{productId}",
+                            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+                        ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId") ?: ""
                             ProductDetailScreen(
                                 productId = productId,
                                 onBack = { rootNavController.popBackStack() },
-                                onChatClicked = { sellerId ->
-                                    rootNavController.navigate("chat/$sellerId")
+                                onChatClicked = { chatId: String, sellerName: String ->
+                                    // Encoding prevents issues with spaces or special characters in names
+                                    val encodedName = java.net.URLEncoder.encode(sellerName, "UTF-8")
+                                    rootNavController.navigate("chat_detail/$chatId/$encodedName")
                                 },
                                 onViewProfile = { sellerId ->
-                                    // Navigate to the public seller profile
                                     rootNavController.navigate("seller_profile/$sellerId")
                                 },
                                 onManageListings = {
-                                    // Navigate to the user's own management screen
                                     rootNavController.navigate("manage_listings")
                                 }
                             )
                         }
 
-                        // 6. Add/Edit Product: Full-screen overlay (hides bottom bar)
+                        // 6. Add/Edit Product
                         composable(
                             route = "add_product?productId={productId}",
-                            arguments = listOf(navArgument("productId") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            })
+                            arguments = listOf(
+                                navArgument("productId") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                }
+                            )
                         ) { backStackEntry ->
                             val productId = backStackEntry.arguments?.getString("productId")
                             AddProductScreen(
                                 productId = productId,
                                 onBack = { rootNavController.popBackStack() },
                                 onPostSuccess = { rootNavController.popBackStack() }
+                            )
+                        }
+
+                        // 7. Chat Detail (Fixed parameter passing)
+                        composable(
+                            route = "chat_detail/{chatId}/{userName}",
+                            arguments = listOf(
+                                navArgument("chatId") { type = NavType.StringType },
+                                navArgument("userName") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+                            val rawUserName = backStackEntry.arguments?.getString("userName") ?: "User"
+                            // Decode the name back to normal text (e.g., "John%20Doe" -> "John Doe")
+                            val userName = URLDecoder.decode(rawUserName, "UTF-8")
+
+                            ChatDetailScreen(
+                                chatId = chatId, // Passed the missing parameter here
+                                userName = userName,
+                                onBack = { rootNavController.popBackStack() }
                             )
                         }
                     }

@@ -116,7 +116,7 @@ fun RegisterScreen(
                                     uid = uid,
                                     fullName = fullName,
                                     email = email,
-                                    profileImageUrl = "" // Default empty
+                                    profileImage = "" // Default empty
                                 )
 
                                 // Save to Firestore

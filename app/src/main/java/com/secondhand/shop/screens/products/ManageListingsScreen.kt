@@ -3,6 +3,7 @@ package com.secondhand.shop.screens.products
 import android.app.Activity
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,11 +11,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,34 +55,29 @@ fun ManageListingsScreen(
 
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    // --- Load products from Firestore ---
+    // --- Load data from Repository ---
     fun loadData() {
         if (currentUserId.isEmpty()) return
         isLoading = true
         val isSoldTab = selectedTab == 1
 
-        Log.d("ManageListings", "Loading products: userId=$currentUserId sold=$isSoldTab")
-
         ProductRepository.fetchUserProducts(
             currentUserId = currentUserId,
-            soldStatus = isSoldTab, // ✅ match Firestore field
+            soldStatus = isSoldTab,
             onSuccess = { products ->
-                Log.d("ManageListings", "Fetched products: ${products.size}")
                 productList = products
                 isLoading = false
             },
             onError = { e ->
-                Log.e("ManageListings", "Fetch error: ${e.message}", e)
                 isLoading = false
-                Toast.makeText(context, "Error loading listings: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         )
     }
 
-    // Reload when tab changes
     LaunchedEffect(selectedTab, currentUserId) { loadData() }
 
-    // Status bar color
+    // Set Status Bar Color
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window
@@ -91,7 +89,13 @@ fun ManageListingsScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                title = { Text("My Listings", color = Color.White, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                title = {
+                    Text(
+                        "My Listings",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
@@ -107,7 +111,7 @@ fun ManageListingsScreen(
                 .padding(padding)
                 .background(Color(0xFFF8F8F8))
         ) {
-            // Tabs
+            // Tabs Section
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
@@ -135,7 +139,7 @@ fun ManageListingsScreen(
                 }
             }
 
-            // Content
+            // Main Content Area
             when {
                 isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -159,7 +163,8 @@ fun ManageListingsScreen(
                                 ecoGreen = ecoGreen,
                                 onEdit = onEditProduct,
                                 onProductClick = onProductClick,
-                                onDeleteSuccess = { loadData() }
+                                onDeleteSuccess = { loadData() },
+                                showOptions = true // Always true for ManageListingsScreen
                             )
                         }
                     }
@@ -175,11 +180,14 @@ fun ListingItemCard(
     ecoGreen: Color,
     onEdit: (String) -> Unit,
     onProductClick: (String) -> Unit,
-    onDeleteSuccess: () -> Unit
+    onDeleteSuccess: () -> Unit,
+    onChatClick: (String) -> Unit = {}, // Logic for Chat button
+    showOptions: Boolean = true         // Switches between Owner (true) and Buyer (false)
 ) {
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    // Delete Confirmation Dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -212,41 +220,103 @@ fun ListingItemCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
-            Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = product.imageUrl,
-                contentDescription = product.title,
-                modifier = Modifier.size(85.dp).clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Product Image
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = product.title,
+                    modifier = Modifier
+                        .size(85.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
 
-            Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(12.dp))
 
-            Column(Modifier.weight(1f)) {
-                Text(product.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("$${product.price}", color = ecoGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(product.condition, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                // Product Info
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = product.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "$${product.price}",
+                        color = ecoGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        text = product.condition,
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
 
-                if (!product.sold) { // ✅ match Firestore 'sold'
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(modifier = Modifier.clickable { onEdit(product.id) }, verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = Color.Gray)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Edit", fontSize = 13.sp, color = Color.Gray)
-                        }
-                        Row(modifier = Modifier.clickable { showDeleteDialog = true }, verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = Color.Gray)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Delete", fontSize = 13.sp, color = Color.Gray)
+                    // Owner Management Row
+                    if (!product.sold && showOptions) {
+                        Row(
+                            Modifier.padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.clickable { onEdit(product.id) },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Edit", fontSize = 13.sp, color = Color.Gray)
+                            }
+                            Row(
+                                modifier = Modifier.clickable { showDeleteDialog = true },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Delete", fontSize = 13.sp, color = Color.Gray)
+                            }
                         }
                     }
-                } else {
-                    Text("Sold", color = ecoGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
+
+            // Buyer Action Row (View Detail and Chat)
+            if (!showOptions) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onProductClick(product.id) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, ecoGreen),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("View Detail", color = ecoGreen, fontSize = 13.sp)
+                    }
+
+                    Button(
+                        onClick = { onChatClick(product.id) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ecoGreen),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Chat Seller", fontSize = 13.sp)
+                    }
                 }
             }
         }

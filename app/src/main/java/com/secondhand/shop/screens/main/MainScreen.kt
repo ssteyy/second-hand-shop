@@ -1,5 +1,6 @@
 package com.secondhand.shop.screens.main
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -26,12 +27,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.secondhand.shop.R
+import com.secondhand.shop.model.Product
 import com.secondhand.shop.screens.chat.ChatDetailScreen
 import com.secondhand.shop.screens.chat.ChatListScreen
 import com.secondhand.shop.screens.notifications.NotificationsScreen
 import com.secondhand.shop.screens.products.*
 import com.secondhand.shop.screens.profile.*
+import java.net.URLEncoder
 
 sealed class BottomNavItem(
     val route: String,
@@ -59,7 +64,6 @@ fun MainScreen(
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Routes where bars are hidden
     val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "favorites", "notifications")
     val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
 
@@ -79,12 +83,7 @@ fun MainScreen(
                                 modifier = Modifier.size(32.dp).clip(CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Second-Hand Shop",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = white
-                            )
+                            Text("Second-Hand Shop", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = white)
                         }
                     },
                     actions = {
@@ -100,13 +99,9 @@ fun MainScreen(
             if (currentRoute !in hideBottomBarRoutes && !isChatDetail && !isProductDetail) {
                 NavigationBar(containerColor = ecoGreen) {
                     val items = listOf(
-                        BottomNavItem.Home,
-                        BottomNavItem.Favorites,
-                        BottomNavItem.Sell,
-                        BottomNavItem.Chat,
-                        BottomNavItem.Profile
+                        BottomNavItem.Home, BottomNavItem.Favorites,
+                        BottomNavItem.Sell, BottomNavItem.Chat, BottomNavItem.Profile
                     )
-
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
                         NavigationBarItem(
@@ -140,33 +135,24 @@ fun MainScreen(
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Home Screen
             composable(BottomNavItem.Home.route) {
-                HomeScreen(
-                    onProductClick = { productId: String ->
-                        internalNavController.navigate("product_detail/$productId")
-                    }
-                )
+                HomeScreen(onProductClick = { id -> internalNavController.navigate("product_detail/$id") })
             }
 
-            // Favorites Screen
             composable(BottomNavItem.Favorites.route) {
                 FavoritesScreen(
                     onBack = { internalNavController.popBackStack() },
-                    onProductClick = { productId ->
-                        internalNavController.navigate("product_detail/$productId")
-                    }
+                    onProductClick = { id -> internalNavController.navigate("product_detail/$id") }
                 )
             }
 
-            // Chat List Screen
             composable(BottomNavItem.Chat.route) {
-                ChatListScreen { userName: String ->
-                    internalNavController.navigate("chat_detail/$userName")
+                ChatListScreen { chatId, userName ->
+                    val encodedName = URLEncoder.encode(userName, "UTF-8")
+                    internalNavController.navigate("chat_detail/$chatId/$encodedName")
                 }
             }
 
-            // Profile Screen
             composable(BottomNavItem.Profile.route) {
                 UserScreen(
                     viewModel = profileViewModel,
@@ -177,78 +163,105 @@ fun MainScreen(
                 )
             }
 
-            // Updated Product Detail Screen Route
             composable("product_detail/{productId}") { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId") ?: ""
                 ProductDetailScreen(
                     productId = productId,
                     onBack = { internalNavController.popBackStack() },
-                    onChatClicked = { sellerId ->
-                        internalNavController.navigate("chat/$sellerId")
+                    onChatClicked = { chatId, sellerName ->
+                        val encodedName = URLEncoder.encode(sellerName, "UTF-8")
+                        internalNavController.navigate("chat_detail/$chatId/$encodedName")
                     },
-                    onViewProfile = { sellerId ->
-                        // Navigate to the public seller profile
-                        internalNavController.navigate("seller_profile/$sellerId")
-                    },
-                    onManageListings = {
-                        // Navigate to the user's own management screen
-                        internalNavController.navigate("manage_listings")
-                    }
+                    onViewProfile = { sellerId -> internalNavController.navigate("seller_profile/$sellerId") },
+                    onManageListings = { internalNavController.navigate("manage_listings") }
                 )
             }
 
-            // Chat Detail Screen
             composable(
-                route = "chat_detail/{userName}", // You can treat userName as sellerId/Name
-                arguments = listOf(navArgument("userName") { type = NavType.StringType })
+                route = "seller_profile/{sellerId}",
+                arguments = listOf(navArgument("sellerId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val userName = backStackEntry.arguments?.getString("userName") ?: "User"
-                ChatDetailScreen(
-                    userName = userName,
-                    onBack = { internalNavController.popBackStack() }
-                )
+                val sId = backStackEntry.arguments?.getString("sellerId") ?: ""
+                val db = Firebase.firestore
+
+                var name by remember { mutableStateOf("Loading...") }
+                var email by remember { mutableStateOf("") }
+                var bio by remember { mutableStateOf("") }
+                var phone by remember { mutableStateOf("") }
+                var imageUrl by remember { mutableStateOf<String?>(null) }
+                var products by remember { mutableStateOf<List<Product>>(emptyList()) }
+                var isLoading by remember { mutableStateOf(true) }
+
+                LaunchedEffect(sId) {
+                    db.collection("users").document(sId).get().addOnSuccessListener { doc ->
+                        name = doc.getString("fullName") ?: "Unknown"
+                        email = doc.getString("email") ?: ""
+                        bio = doc.getString("bio") ?: ""
+                        phone = doc.getString("phone") ?: ""
+                        imageUrl = doc.getString("profileImage") ?: doc.getString("profileImageUrl")
+                    }
+
+                    db.collection("products")
+                        .whereEqualTo("sellerId", sId)
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            products = snapshot.documents.mapNotNull { doc ->
+                                doc.toObject(Product::class.java)?.copy(id = doc.id)
+                            }
+                            isLoading = false
+                        }
+                        .addOnFailureListener { isLoading = false }
+                }
+
+                if (isLoading) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = ecoGreen)
+                    }
+                } else {
+                    // ✅ FIXED: Now passing the required onChatClick parameter
+                    SellerProfileScreen(
+                        sellerName = name,
+                        sellerEmail = email,
+                        sellerBio = bio,
+                        sellerPhone = phone,
+                        sellerImageUrl = imageUrl,
+                        sellerProducts = products,
+                        onBack = { internalNavController.popBackStack() },
+                        onProductClick = { id -> internalNavController.navigate("product_detail/$id") },
+                        onChatClick = { targetSellerId, targetSellerName ->
+                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            if (currentUserId.isNotEmpty()) {
+                                // Create a unique Chat ID based on alphabetical order of UIDs
+                                val chatId = if (currentUserId < targetSellerId)
+                                    "${currentUserId}_$targetSellerId"
+                                else
+                                    "${targetSellerId}_$currentUserId"
+
+                                val encodedName = URLEncoder.encode(targetSellerName, "UTF-8")
+                                internalNavController.navigate("chat_detail/$chatId/$encodedName")
+                            }
+                        }
+                    )
+                }
             }
 
-            // Manage Listings Screen
             composable("manage_listings") {
                 ManageListingsScreen(
                     onBack = { internalNavController.popBackStack() },
-                    onEditProduct = { productId: String ->
-                        rootNavController.navigate("add_product?productId=$productId")
-                    },
-                    onProductClick = { productId: String ->
-                        internalNavController.navigate("product_detail/$productId")
-                    }
+                    onEditProduct = { id -> rootNavController.navigate("add_product?productId=$id") },
+                    onProductClick = { id -> internalNavController.navigate("product_detail/$id") }
                 )
             }
 
-            // Seller Profile Screen
-            composable(
-                route = "seller_profile/{sellerId}", // Updated to use ID
-                arguments = listOf(
-                    navArgument("sellerId") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val sId = backStackEntry.arguments?.getString("sellerId") ?: ""
-
-                // Logic to fetch Seller info based on sId (Placeholder for now)
-                // In a real app, use a LaunchedEffect to fetch the user object from Firebase
-                val name = "Seller ${sId.take(5)}"
-                val email = "contact@seller.com"
-
-                SellerProfileScreen(
-                    sellerName = name,
-                    sellerEmail = email,
-                    sellerImageUrl = null,
-                    sellerProducts = emptyList(), // Fetch these via ProductRepository.fetchUserProducts(sId)
-                    onBack = { internalNavController.popBackStack() },
-                    onProductClick = { productId ->
-                        internalNavController.navigate("product_detail/$productId")
-                    }
-                )
+            composable("chat_detail/{chatId}/{userName}", arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType },
+                navArgument("userName") { type = NavType.StringType }
+            )) { backStackEntry ->
+                val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+                val userName = backStackEntry.arguments?.getString("userName") ?: "User"
+                ChatDetailScreen(chatId = chatId, userName = userName, onBack = { internalNavController.popBackStack() })
             }
 
-            // Other screens
             composable("search_filter") { SearchFilterScreen(onBack = { internalNavController.popBackStack() }) }
             composable("notifications") { NotificationsScreen(onBack = { internalNavController.popBackStack() }) }
             composable("edit_profile") { EditProfileScreen(profileViewModel = profileViewModel, onBack = { internalNavController.popBackStack() }) }

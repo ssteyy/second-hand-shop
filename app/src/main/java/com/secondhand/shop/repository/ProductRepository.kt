@@ -114,20 +114,16 @@ object ProductRepository {
     // ---------------------------
 // GET USER NAME BY ID
 // ---------------------------
-    fun getUserNameById(
-        userId: String,
-        onResult: (String) -> Unit
-    ) {
-        FirebaseFirestore.getInstance()
-            .collection("users") // Assuming you have a "users" collection
-            .document(userId)
-            .get()
-            .addOnSuccessListener { doc ->
-                val name = doc.getString("name") ?: "Unknown Seller"
+    fun getUserNameById(userId: String, onResult: (String?) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                // Ensure "username" matches the field name in your Firestore 'users' collection
+                val name = document.getString("username") ?: document.getString("name")
                 onResult(name)
             }
             .addOnFailureListener {
-                onResult("Unknown Seller")
+                onResult(null)
             }
     }
 

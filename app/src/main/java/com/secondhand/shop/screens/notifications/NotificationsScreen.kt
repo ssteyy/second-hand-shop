@@ -3,14 +3,16 @@ package com.secondhand.shop.screens.notifications
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,151 +20,155 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.secondhand.shop.model.Chat
+import com.secondhand.shop.model.Notification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(onBack: () -> Unit) {
     val ecoGreen = Color(0xFF4CAF50)
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val db = FirebaseFirestore.getInstance()
+
+    var unreadChats by remember { mutableStateOf<List<Chat>>(emptyList()) }
+    var systemNotifications by remember { mutableStateOf<List<Notification>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isEmpty()) return@LaunchedEffect
+
+        // 1. Listen for Chats that have unread messages
+        db.collection("chats")
+            .whereArrayContains("members", currentUserId)
+            .addSnapshotListener { snapshot, _ ->
+                unreadChats = snapshot?.toObjects(Chat::class.java)?.filter {
+                    it.unreadCountForUser(currentUserId) > 0
+                } ?: emptyList()
+            }
+
+        // 2. Listen for System Updates (Likes, etc.)
+        db.collection("notifications")
+            .whereEqualTo("userId", currentUserId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, _ ->
+                systemNotifications = snapshot?.toObjects(Notification::class.java) ?: emptyList()
+                isLoading = false
+            }
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                title = {
-                    Text(
-                        text = "Notifications",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
+                title = { Text("Notifications", fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = ecoGreen
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = ecoGreen)
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Color(0xFFF8F8F8))
-        ) {
-            // Sample static data
-            item {
-                NotificationItem(
-                    title = "Order Placed",
-                    body = "Your order for 'Vintage Lamp' has been received.",
-                    time = "2m ago",
-                    icon = Icons.Default.ShoppingCart,
-                    iconColor = Color(0xFF2196F3)
-                )
-            }
-            item {
-                NotificationItem(
-                    title = "New Like",
-                    body = "Someone liked your 'Wooden Chair' listing.",
-                    time = "1h ago",
-                    icon = Icons.Default.Favorite,
-                    iconColor = Color(0xFFE91E63)
-                )
-            }
-            item {
-                NotificationItem(
-                    title = "System Update",
-                    body = "New features are available! Check them out.",
-                    time = "Yesterday",
-                    icon = Icons.Default.Notifications,
-                    iconColor = Color(0xFFFF9800)
-                )
-            }
+        Box(modifier = Modifier.fillMaxSize().padding(padding).background(Color(0xFFF8F8F8))) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = ecoGreen)
+            } else if (unreadChats.isEmpty() && systemNotifications.isEmpty()) {
+                Text("No new updates", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-            // Add more items to fill the screen
-            items(5) { index ->
-                NotificationItem(
-                    title = "Promotion",
-                    body = "Get 10% off on your next purchase in Electronics!",
-                    time = "${index + 2} days ago",
-                    icon = Icons.Default.Notifications,
-                    iconColor = Color(0xFF4CAF50)
-                )
+                    if (unreadChats.isNotEmpty()) {
+                        item { SectionHeader("New Messages") }
+                        items(unreadChats) { chat ->
+                            // ✅ Uses a special item that fetches "hello" from sub-collection
+                            ChatNotificationItem(chat, currentUserId)
+                        }
+                    }
+
+                    if (systemNotifications.isNotEmpty()) {
+                        item { SectionHeader("Activity") }
+                        items(systemNotifications) { note ->
+                            NotificationItem(
+                                title = note.title,
+                                body = note.body,
+                                time = note.formattedTime(),
+                                icon = getIconForType(note.type),
+                                iconColor = getIconColorForType(note.type)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * ✅ This specialized component fetches the LATEST message text
+ * (e.g., "hello") directly from the sub-collection.
+ */
 @Composable
-fun NotificationItem(
-    title: String,
-    body: String,
-    time: String,
-    icon: ImageVector,
-    iconColor: Color
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 1.dp),
-        color = Color.White
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = iconColor.copy(alpha = 0.1f),
-                modifier = Modifier.size(48.dp)
-            ) {
+fun ChatNotificationItem(chat: Chat, currentUserId: String) {
+    var displayBody by remember { mutableStateOf(chat.lastMessage ?: "New Message") }
+
+    LaunchedEffect(chat.id) {
+        FirebaseFirestore.getInstance()
+            .collection("chats").document(chat.id)
+            .collection("messages")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(1)
+            .addSnapshotListener { snapshot, _ ->
+                val latestText = snapshot?.documents?.firstOrNull()?.getString("text")
+                if (latestText != null) displayBody = latestText
+            }
+    }
+
+    NotificationItem(
+        title = "From ${chat.getOtherUserName(currentUserId)}",
+        body = displayBody,
+        time = chat.lastMessageTimeFormatted(),
+        icon = Icons.AutoMirrored.Filled.Chat,
+        iconColor = Color(0xFF4CAF50)
+    )
+}
+
+@Composable
+fun SectionHeader(text: String) {
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Gray, modifier = Modifier.padding(16.dp))
+}
+
+@Composable
+fun NotificationItem(title: String, body: String, time: String, icon: ImageVector, iconColor: Color) {
+    Surface(modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp), color = Color.White) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            Surface(shape = CircleShape, color = iconColor.copy(alpha = 0.1f), modifier = Modifier.size(45.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconColor,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
                 }
             }
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Color.Black
-                    )
-                    Text(
-                        text = time,
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(time, fontSize = 11.sp, color = Color.Gray)
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = body,
-                    fontSize = 14.sp,
-                    color = Color.DarkGray,
-                    lineHeight = 20.sp
-                )
+                Text(body, fontSize = 14.sp, color = Color.DarkGray, lineHeight = 18.sp)
             }
         }
     }
+}
+
+fun getIconForType(type: String): ImageVector = when (type) {
+    "like" -> Icons.Default.Favorite
+    "order" -> Icons.Default.ShoppingCart
+    else -> Icons.Default.Notifications
+}
+
+fun getIconColorForType(type: String): Color = when (type) {
+    "like" -> Color(0xFFE91E63)
+    "order" -> Color(0xFF2196F3)
+    else -> Color(0xFFFF9800)
 }
