@@ -1,6 +1,5 @@
 package com.secondhand.shop.screens.main
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -83,8 +82,8 @@ fun MainScreen(
     }
     // --------------------------------
 
-    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "favorites", "notifications")
-    val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings")
+    val hideTopBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "favorites", "notifications", "help_center", "privacy_policy")
+    val hideBottomBarRoutes = listOf("search_filter", "manage_listings", "edit_profile", "settings", "help_center", "privacy_policy")
 
     val isChatDetail = currentRoute?.startsWith("chat_detail") == true
     val isProductDetail = currentRoute?.startsWith("product_detail") == true
@@ -199,6 +198,8 @@ fun MainScreen(
                     onNavigateToEdit = { internalNavController.navigate("edit_profile") },
                     onNavigateToListings = { internalNavController.navigate("manage_listings") },
                     onNavigateToSettings = { internalNavController.navigate("settings") },
+                    onNavigateToHelp = { internalNavController.navigate("help_center") },
+                    onNavigatorToPrivancy = { internalNavController.navigate("privacy_policy") },
                     onNavigateToFavorites = { internalNavController.navigate(BottomNavItem.Favorites.route) }
                 )
             }
@@ -321,6 +322,18 @@ fun MainScreen(
                         FirebaseAuth.getInstance().signOut()
                         rootNavController.navigate("login") { popUpTo(0) }
                     }
+                )
+            }
+
+            composable("help_center") {
+                HelpCenterScreen(
+                    onBack = { internalNavController.popBackStack() }
+                )
+            }
+
+            composable("privacy_policy") {
+                PrivacyPolicyScreen(
+                    onBack = { internalNavController.popBackStack() }
                 )
             }
         }

@@ -31,7 +31,9 @@ fun UserScreen(
     onNavigateToEdit: () -> Unit,
     onNavigateToListings: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToFavorites: () -> Unit
+    onNavigateToFavorites: () -> Unit,
+    onNavigateToHelp: () -> Unit,
+    onNavigatorToPrivancy: () -> Unit
 ) {
     val ecoGreen = Color(0xFF4CAF50)
     val context = LocalContext.current
@@ -172,13 +174,13 @@ fun UserScreen(
                     ProfileMenuItem(
                         title = "Help Center",
                         icon = Icons.Default.HelpOutline,
-                        onClick = {}
+                        onClick = onNavigateToHelp
                     )
 
                     ProfileMenuItem(
                         title = "Privacy Policy",
                         icon = Icons.Default.PrivacyTip,
-                        onClick = {}
+                        onClick = onNavigatorToPrivancy
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))

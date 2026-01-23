@@ -167,7 +167,7 @@ fun CategoryRow(
                     .clickable { onSelect(category) },
                 shape = RoundedCornerShape(12.dp),
                 color = if (isSelected) Color(0xFF4CAF50) else Color.White,
-                border = BorderStroke(1.dp, Color(0xFF4CAF50))
+                border = BorderStroke(1.dp, Color(0xFFDCDCDC))
             ) {
                 Text(
                     text = category,

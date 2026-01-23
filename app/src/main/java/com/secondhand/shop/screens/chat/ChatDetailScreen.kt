@@ -115,6 +115,7 @@ fun ChatDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Column {
                         Text(userName, fontSize = 16.sp, fontWeight = FontWeight.Bold)

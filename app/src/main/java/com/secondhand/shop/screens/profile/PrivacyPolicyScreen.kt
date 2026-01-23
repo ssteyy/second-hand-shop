@@ -27,6 +27,7 @@ fun PrivacyPolicyScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
                         "Privacy Policy",
