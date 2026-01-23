@@ -35,7 +35,6 @@ This app helps solve that problem by providing a **simple and safe platform** wh
 
 ## ⚙️ System Scope
 
-### 🧍‍♀️ User Side (Mobile App)
 - Register, Login, Logout  
 - View and search products  
 - Filter by category, product name  
